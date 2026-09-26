@@ -1,0 +1,351 @@
+.page {
+  width: 100%;
+  max-width: var(--app-max-width);
+
+  min-height: 100vh;
+
+  margin: 0 auto;
+
+  background: var(--app-background);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+
+  z-index: 20;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 16px 20px;
+
+  background: var(--app-card);
+
+  border-bottom: 1px solid var(--app-divider);
+}
+
+.backButton {
+  display: flex;
+
+  width: 36px;
+  height: 36px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: var(--app-subtle);
+
+  color: var(--app-text);
+
+  font: inherit;
+
+  font-size: 18px;
+
+  cursor: pointer;
+}
+
+.title {
+  font-size: 16px;
+
+  font-weight: 700;
+
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin-top: 2px;
+
+  color: var(--app-muted);
+
+  font-size: 12px;
+}
+
+.content {
+  padding: 16px;
+}
+
+.achievementCard {
+  margin-bottom: 18px;
+
+  padding: 16px;
+
+  border-radius: 16px;
+
+  background: var(--app-card);
+}
+
+.achievementHeader {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-bottom: 10px;
+}
+
+.achievementTitle {
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.achievementTotal {
+  flex-shrink: 0;
+
+  padding: 4px 10px;
+
+  border-radius: 20px;
+
+  background: var(--app-success-soft);
+
+  color: var(--chance-safe);
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.breakdown {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.breakdownRow {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 11px 0;
+
+  border-bottom: 1px solid var(--app-divider);
+}
+
+.breakdownRow:last-child {
+  border-bottom: none;
+}
+
+.breakdownName {
+  font-size: 13px;
+
+  font-weight: 500;
+
+  line-height: 1.3;
+}
+
+.breakdownNote {
+  margin-top: 3px;
+
+  color: var(--app-muted);
+
+  font-size: 11px;
+
+  line-height: 1.35;
+}
+
+.points,
+.pointsMuted {
+  flex-shrink: 0;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.points {
+  color: var(--chance-safe);
+}
+
+.pointsMuted {
+  color: var(--app-muted);
+}
+
+.achievementNote {
+  margin-top: 10px;
+
+  padding: 10px 12px;
+
+  border-radius: 10px;
+
+  background: var(--app-subtle);
+
+  color: var(--app-muted);
+
+  font-size: 11px;
+
+  line-height: 1.4;
+}
+
+.directionsHeader {
+  margin-bottom: 12px;
+}
+
+.directionsTitle {
+  margin-bottom: 4px;
+
+  font-size: 16px;
+
+  font-weight: 700;
+}
+
+.directionsDescription {
+  color: var(--app-muted);
+
+  font-size: 12px;
+
+  line-height: 1.4;
+}
+
+.directionsList {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+
+  margin-bottom: 14px;
+}
+
+.directionCard {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 14px;
+
+  border-radius: 14px;
+
+  background: var(--app-card);
+}
+
+.directionPriority {
+  display: flex;
+
+  width: 30px;
+  height: 30px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #0066ff;
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.directionInfo {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.directionName {
+  margin-bottom: 4px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  line-height: 1.3;
+}
+
+.directionMeta {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 4px;
+
+  color: var(--app-muted);
+
+  font-size: 11px;
+
+  line-height: 1.3;
+}
+
+.arrows {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.arrowButton {
+  display: flex;
+
+  width: 30px;
+  height: 28px;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: var(--app-subtle);
+
+  color: var(--app-accent);
+
+  font: inherit;
+
+  font-size: 15px;
+
+  cursor: pointer;
+}
+
+.arrowButton:disabled {
+  color: var(--app-disabled);
+
+  cursor: default;
+}
+
+.error {
+  margin-bottom: 14px;
+
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  background: var(--app-danger-soft);
+
+  color: var(--chance-risk);
+
+  font-size: 13px;
+}
+
+.state {
+  display: flex;
+
+  min-height: 70vh;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+}

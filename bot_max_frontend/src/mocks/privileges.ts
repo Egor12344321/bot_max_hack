@@ -1,0 +1,39 @@
+import type { PrivilegeCategory } from "@/api/types/onboarding";
+
+export const mockPrivileges: PrivilegeCategory[] = [
+  {
+    id: "olympiad_bvi",
+    name: "Победитель или призёр олимпиады",
+    quotaType: "bvi",
+    maxQuotaPercent: null,
+    requiredDocuments: ["Документ, подтверждающий результат олимпиады"],
+  },
+  {
+    id: "disability",
+    name: "Инвалидность I или II группы",
+    quotaType: "special_quota",
+    maxQuotaPercent: 10,
+    requiredDocuments: ["Документ, подтверждающий право на льготу"],
+  },
+  {
+    id: "orphan",
+    name: "Сирота или оставшийся без попечения родителей",
+    quotaType: "special_quota",
+    maxQuotaPercent: 10,
+    requiredDocuments: ["Документ, подтверждающий статус"],
+  },
+  {
+    id: "svo",
+    name: "Участник или ребёнок участника СВО",
+    quotaType: "separate_quota",
+    maxQuotaPercent: 10,
+    requiredDocuments: ["Документ, подтверждающий право на льготу"],
+  },
+  {
+    id: "target_contract",
+    name: "Есть договор о целевом обучении",
+    quotaType: "target_quota",
+    maxQuotaPercent: null,
+    requiredDocuments: ["Договор о целевом обучении"],
+  },
+];

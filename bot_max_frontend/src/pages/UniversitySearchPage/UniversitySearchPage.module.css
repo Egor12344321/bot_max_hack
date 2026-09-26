@@ -1,0 +1,44 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px var(--page-padding-x);
+}
+
+.search {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-card);
+  color: var(--app-text);
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--app-card);
+}
+
+.city {
+  margin-top: 4px;
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+.error {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--app-danger-soft);
+  color: var(--chance-risk);
+}

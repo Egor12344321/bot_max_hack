@@ -1,0 +1,1198 @@
+openapi: 3.0.3
+info:
+  title: MAX Абитуриент — API мини-аппы
+  version: 0.1.0-draft
+  description: |
+    Черновой контракт между ботом MAX, мини-аппой "Помощник абитуриента" и бэкендом.
+
+    Покрывает сценарий из переписки:
+    1) бот — язык → гражданство → баллы ЕГЭ (отсечение по минимуму Минобрнауки);
+    2) хэндовер в мини-аппу с сессией;
+    3) мини-аппа — интересы → достижения (ИД) → льготы/квоты → расчёт вузов;
+    4) экраны "Профиль", "Вузы", "Приоритеты", "Календарь";
+    5) сохранение стратегии и отчёт, дублируемый ботом.
+  contact:
+    name: Хакатон VK MAX — Помощник абитуриента
+
+servers:
+  - url: https://api.abiturient-assist.example/v1
+    description: Заглушка, заменить на реальный адрес бэкенда
+
+tags:
+  - name: Auth
+    description: Хэндовер между ботом MAX и мини-аппой
+  - name: Localization
+    description: Язык интерфейса
+  - name: Citizenship
+    description: Гражданство и трек поступления (ЕАЭС / прочие страны)
+  - name: EGE
+    description: Баллы ЕГЭ и отсечение по минимальному порогу
+  - name: Interests
+    description: Выбор направлений интересов (шаг 1 из 3)
+  - name: Achievements
+    description: Индивидуальные достижения — ИД (шаг 2 из 3)
+  - name: Privileges
+    description: Льготы и квоты при поступлении (шаг 3 из 3)
+  - name: Universities
+    description: Каталог и подборка вузов пользователя
+  - name: Directions
+    description: Направления внутри вуза и их приоритеты
+  - name: Priorities
+    description: Общая стратегия приоритетов между вузами
+  - name: Profile
+    description: Итоговая карточка шансов пользователя
+  - name: Deadlines
+    description: Календарь дедлайнов и напоминания
+  - name: Strategy
+    description: Финализация стратегии и отчёт
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------- AUTH / HANDOFF ----------
+  /auth/bot-session:
+    post:
+      tags: [Auth]
+      summary: Создать сессию из бота (шаг "язык" в боте)
+      description: >
+        Бот создаёт сессию, как только пользователь выбрал язык интерфейса.
+        Дальше все шаги бота (гражданство, баллы ЕГЭ) обновляют эту сессию.
+      security: []
+      operationId: createBotSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform, platformUserId, language]
+              properties:
+                platform:
+                  type: string
+                  enum: [max]
+                platformUserId:
+                  type: string
+                  description: ID пользователя в MAX
+                language:
+                  $ref: '#/components/schemas/LanguageCode'
+      responses:
+        '201':
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/exchange:
+    post:
+      tags: [Auth]
+      summary: Обменять хэндовер из бота на токен доступа мини-аппы (с поддержкой Fallback)
+      description: >
+        Мини-аппа при открытии передаёт подписанные launchParams.
+        Бэкенд валидирует подпись. Если в параметрах запуска есть session_id (start_param), 
+        бэкенд привязывает токен к этой сессии. 
+        FALLBACK: Если session_id нет (прямое открытие), бэкенд создаёт новую пустую сессию.
+      security: []
+      operationId: exchangeAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [launchParams]
+              properties:
+                launchParams:
+                  type: string
+                  description: Сырые подписанные launch-параметры от MAX SDK
+      responses:
+        '200':
+          description: Токен выдан, сессия (существующая или новая) прикреплена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  expiresIn:
+                    type: integer
+                    example: 3600
+                  session:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /sessions/{sessionId}:
+    get:
+      tags: [Auth]
+      summary: Получить текущий контекст (Draft) заявки для рендера
+      description: >
+        Вызывается фронтендом сразу после инициализации SDK и получения токена. 
+        Возвращает весь собранный ботом контекст для подстановки в стейт приложения.
+      operationId: getSessionState
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDraft'
+
+  # ---------- LOCALIZATION ----------
+  /languages:
+    get:
+      tags: [Localization]
+      summary: Список поддерживаемых языков интерфейса
+      security: []
+      operationId: listLanguages
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Language'
+
+  /sessions/{sessionId}/language:
+    patch:
+      tags: [Localization]
+      summary: Установить язык интерфейса
+      security: []
+      operationId: setSessionLanguage
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [language]
+              properties:
+                language:
+                  $ref: '#/components/schemas/LanguageCode'
+      responses:
+        '200':
+          description: Обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  # ---------- CITIZENSHIP ----------
+  /citizenship-groups:
+    get:
+      tags: [Citizenship]
+      summary: Каталог стран и группировка (ЕАЭС / прочие)
+      security: []
+      operationId: listCitizenshipOptions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CitizenshipOption'
+
+  /sessions/{sessionId}/citizenship:
+    patch:
+      tags: [Citizenship]
+      summary: Указать гражданство и получить применимый трек поступления
+      description: >
+        Для ЕАЭС (включая Россию) возвращает domestic_equivalent — пользователь
+        далее идёт по обычному сценарию (баллы ЕГЭ → мини-аппа). Для прочих стран
+        возвращает rf_quota_or_paid с текстами про Квоту Правительства РФ и платное
+        обучение — мини-аппа с расчётом шансов в этом случае не открывается.
+      security: []
+      operationId: setSessionCitizenship
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [countryCode]
+              properties:
+                countryCode:
+                  type: string
+                  example: KZ
+      responses:
+        '200':
+          description: Трек определён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitizenshipResult'
+
+  # ---------- EGE ----------
+  /subjects:
+    get:
+      tags: [EGE]
+      summary: Каталог предметов ЕГЭ с минимальным порогом Минобрнауки
+      security: []
+      operationId: listSubjects
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subject'
+
+  /sessions/{sessionId}/ege-scores:
+    get:
+      tags: [EGE]
+      summary: Получить введённые баллы и статус прохождения порога
+      security: []
+      operationId: getEgeScores
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgeScoresSubmission'
+    put:
+      tags: [EGE]
+      summary: Сохранить баллы ЕГЭ пользователя
+      description: >
+        Бот или пользователь присылает баллы по предметам. Ответ содержит
+        allPassed=false, если хотя бы один предмет ниже минимального порога.
+      security: []
+      operationId: submitEgeScores
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scores]
+              properties:
+                scores:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EgeScoreInput'
+      responses:
+        '200':
+          description: Баллы приняты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgeScoresSubmission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ---------- INTERESTS (шаг 1 из 3) ----------
+  /interest-categories:
+    get:
+      tags: [Interests]
+      summary: Каталог категорий интересов (IT, Медицина, Биология, ...)
+      security: []
+      operationId: listInterestCategories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InterestCategory'
+
+  /sessions/{sessionId}/interests:
+    put:
+      tags: [Interests]
+      summary: Сохранить выбранные категории интересов (1–3 штуки)
+      operationId: setInterests
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryIds]
+              properties:
+                categoryIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Сохранено
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ---------- ACHIEVEMENTS (шаг 2 из 3) ----------
+  /achievements:
+    get:
+      tags: [Achievements]
+      summary: Каталог индивидуальных достижений (ИД)
+      security: []
+      operationId: listAchievements
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Achievement'
+
+  /sessions/{sessionId}/achievements:
+    put:
+      tags: [Achievements]
+      summary: Сохранить отмеченные достижения пользователя
+      description: >
+        Реальные баллы за каждое достижение считаются индивидуально для каждого
+        вуза — см. `GET /sessions/{sessionId}/universities/{universityId}`.
+      operationId: setUserAchievements
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [achievementIds]
+              properties:
+                achievementIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Сохранено
+
+  # ---------- PRIVILEGES / QUOTAS (шаг 3 из 3) ----------
+  /privilege-categories:
+    get:
+      tags: [Privileges]
+      summary: Каталог льгот и квот (БВИ, особая квота, отдельная квота, целевая)
+      security: []
+      operationId: listPrivilegeCategories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PrivilegeCategory'
+
+  /sessions/{sessionId}/privilege:
+    put:
+      tags: [ Privileges ]
+      summary: Сохранить все льготные категории пользователя (multi-select)
+      description: >
+        Пользователь отмечает все имеющиеся льготы. Бэкенд автоматически 
+        анализирует список и выбирает наиболее выгодную квоту/БВИ для расчёта шансов.
+      operationId: setUserPrivileges
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ categoryIds ]
+              properties:
+                categoryIds:
+                  type: array
+                  description: Массив ID отмеченных льгот (передавать пустой массив [], если льгот нет)
+                  items:
+                    type: string
+                  example: [ "olympiad_bvi_2026", "special_quota_svo" ]
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivilegeApplyResult'
+
+  # ---------- UNIVERSITIES ----------
+  /universities/search:
+    get:
+      tags: [Universities]
+      summary: Поиск вуза для ручного добавления (кнопка "+ Добавить")
+      operationId: searchUniversities
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UniversityCard'
+
+  /universities/{universityId}:
+    get:
+      tags: [Universities]
+      summary: Публичная карточка вуза (без привязки к пользователю)
+      operationId: getUniversityCard
+      parameters:
+        - $ref: '#/components/parameters/UniversityId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversityCard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sessions/{sessionId}/universities:
+    get:
+      tags: [Universities]
+      summary: "Экран «Мои вузы» — подобранный список с шансами"
+      operationId: listUserUniversities
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UniversitySummary'
+    post:
+      tags: [Universities]
+      summary: Добавить вуз вручную в подборку
+      operationId: addUserUniversity
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [universityId]
+              properties:
+                universityId:
+                  type: string
+      responses:
+        '201':
+          description: Добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversitySummary'
+
+  /sessions/{sessionId}/universities/{universityId}:
+    get:
+      tags: [Universities]
+      summary: "Детальная карточка вуза: разбор ИД + направления"
+      operationId: getUserUniversityDetail
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/UniversityId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversityDetail'
+    delete:
+      tags: [Universities]
+      summary: Убрать вуз из подборки
+      operationId: removeUserUniversity
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/UniversityId'
+      responses:
+        '204':
+          description: Удалён
+
+  # ---------- DIRECTIONS ----------
+  /sessions/{sessionId}/universities/{universityId}/directions/priorities:
+    put:
+      tags: [Directions]
+      summary: Расставить приоритет направлений внутри вуза
+      operationId: setDirectionPriorities
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/UniversityId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [directionIds]
+              properties:
+                directionIds:
+                  type: array
+                  description: Массив ID направлений в новом порядке приоритета
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Порядок сохранён
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Direction'
+
+  # ---------- PRIORITIES (между вузами) ----------
+  /sessions/{sessionId}/priorities:
+    get:
+      tags: [Priorities]
+      summary: "Экран «Стратегия приоритетов»"
+      operationId: getPriorities
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriorityListItem'
+    put:
+      tags: [Priorities]
+      summary: Сохранить новый порядок вузов
+      operationId: setPriorities
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [universityIds]
+              properties:
+                universityIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriorityListItem'
+
+  # ---------- PROFILE ----------
+  /sessions/{sessionId}/profile:
+    get:
+      tags: [Profile]
+      summary: "Экран «Профиль»: итоговый балл, вероятность, запас/реально/риск"
+      operationId: getProfileSummary
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSummary'
+
+  # ---------- DEADLINES ----------
+  /sessions/{sessionId}/deadlines:
+    get:
+      tags: [Deadlines]
+      summary: "Экран «Календарь дедлайнов»"
+      operationId: listDeadlines
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeadlineEvent'
+
+  /sessions/{sessionId}/deadlines/{eventId}/reminders:
+    patch:
+      tags: [Deadlines]
+      summary: Включить/выключить напоминания за 3 дня и за 24 часа
+      description: Реальную отправку делает бот; здесь только сохраняются настройки.
+      operationId: setDeadlineReminders
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remind3Days:
+                  type: boolean
+                remind24Hours:
+                  type: boolean
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadlineEvent'
+
+  # ---------- STRATEGY / REPORT ----------
+  /sessions/{sessionId}/strategy:
+    post:
+      tags: [Strategy]
+      summary: "Финализировать стратегию (кнопка «Сохранить стратегию» / «Стратегия готова»)"
+      description: >
+        Фиксирует текущий порядок приоритетов. Бэкенд должен уведомить бота, чтобы
+        тот прислал итоговое сообщение в чат (сама отправка — вне этого API,
+        со стороны бот-сервиса).
+      operationId: finalizeStrategy
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Стратегия сохранена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyFinalizeResponse'
+
+  /sessions/{sessionId}/strategy/report:
+    get:
+      tags: [Strategy]
+      summary: Получить отчёт по стратегии (для выгрузки, например PDF)
+      operationId: getStrategyReport
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pdf, json]
+            default: pdf
+      responses:
+        '200':
+          description: Отчёт
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StrategyFinalizeResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+    UniversityId:
+      name: universityId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Некорректные данные
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    LanguageCode:
+      type: string
+      enum: [ru, kk, ky]
+      description: ru — русский, kk — қазақша, ky — кыргызча
+
+    Language:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/LanguageCode'
+        name:
+          type: string
+          example: Русский
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        platform:
+          type: string
+          example: max
+        language:
+          $ref: '#/components/schemas/LanguageCode'
+        countryCode:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SessionDraft:
+      type: object
+      description: Агрегированный стейт сессии, собранный ботом (хранится в Redis)
+      properties:
+        id:
+          type: string
+        language:
+          $ref: '#/components/schemas/LanguageCode'
+        countryCode:
+          type: string
+          nullable: true
+        egeScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResult'
+        isCompleteFromBot:
+          type: boolean
+          description: Флаг, показывающий, прошёл ли пользователь минимальный путь в боте
+
+    CitizenshipOption:
+      type: object
+      properties:
+        countryCode:
+          type: string
+          example: KZ
+        name:
+          type: string
+          example: Қазақстан
+        group:
+          type: string
+          enum: [eaeu, other]
+
+    CitizenshipResult:
+      type: object
+      properties:
+        track:
+          type: string
+          enum: [domestic_equivalent, rf_quota_or_paid]
+          description: >
+            domestic_equivalent — ЕАЭС, поступление на общих основаниях с гражданами РФ;
+            rf_quota_or_paid — прочие страны, показываем Квоту Правительства РФ и платное обучение.
+        message:
+          type: string
+          example: "Сен бюджетке ресейліктермен бірдей жағдайда түсе аласың. ЖЖ де есепке алынады."
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                example: Портал квоты
+              url:
+                type: string
+                format: uri
+                example: https://education-in-russia.com
+
+    Subject:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Русский язык
+        minThreshold:
+          type: integer
+          example: 36
+
+    EgeScoreInput:
+      type: object
+      required: [subjectId, score]
+      properties:
+        subjectId:
+          type: string
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    EgeScoreResult:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        subjectName:
+          type: string
+        score:
+          type: integer
+        minThreshold:
+          type: integer
+        passed:
+          type: boolean
+
+    EgeScoresSubmission:
+      type: object
+      properties:
+        scores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResult'
+        allPassed:
+          type: boolean
+
+    InterestCategory:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: IT
+        icon:
+          type: string
+          example: "💻"
+
+    Achievement:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Знак ГТО (золото)
+        description:
+          type: string
+          nullable: true
+
+    PrivilegeCategory:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: Участник/ребёнок участника СВО
+        quotaType:
+          type: string
+          enum: [bvi, special_quota, separate_quota, target_quota, none]
+        maxQuotaPercent:
+          type: number
+          nullable: true
+          example: 10
+        requiredDocuments:
+          type: array
+          items:
+            type: string
+
+    PrivilegeApplyResult:
+      type: object
+      properties:
+        selectedCategoryIds:
+          type: array
+          items:
+            type: string
+          example: [ "olympiad_bvi_2026", "special_quota_svo" ]
+        bestQuotaType:
+          type: string
+          enum: [ bvi, special_quota, separate_quota, target_quota, none ]
+          description: Наиболее выгодный тип квоты, автоматически определённый бэкендом
+          example: bvi
+        message:
+          type: string
+          example: "На основе твоих льгот бэкенд применил БВИ (Зачисление без вступительных испытаний)"
+
+    UniversityCard:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: МГУ
+        city:
+          type: string
+        hasDormitory:
+          type: boolean
+        hasMilitaryDept:
+          type: boolean
+        directionsCount:
+          type: integer
+
+    RiskStatus:
+      type: string
+      enum: [reserve, real, risk]
+      description: reserve = «запас», real = «реально», risk = «риск»
+
+    UniversitySummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        priority:
+          type: integer
+        directionsCount:
+          type: integer
+        myScore:
+          type: integer
+        passingScorePreviousYear:
+          type: integer
+        chancePercent:
+          type: integer
+        status:
+          $ref: '#/components/schemas/RiskStatus'
+        seatsTotal:
+          type: integer
+          nullable: true
+        seatsFilled:
+          type: integer
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          example: [Биология, Медицина]
+
+    AchievementScoreBreakdownItem:
+      type: object
+      properties:
+        achievementId:
+          type: string
+        achievementName:
+          type: string
+        points:
+          type: integer
+        counted:
+          type: boolean
+        note:
+          type: string
+          nullable: true
+          example: "Максимум за ИД в этом вузе — 10 баллов. Волонтёрство не учитывается."
+
+    RiskFactors:
+      type: object
+      description: Сырые данные, на основе которых бэкенд считает chancePercent
+      properties:
+        passingScorePreviousYear:
+          type: integer
+        budgetPlacesPreviousYear:
+          type: integer
+          nullable: true
+        budgetPlacesCurrentYear:
+          type: integer
+          nullable: true
+          description: КЦП на текущий год
+        competitionIndex:
+          type: number
+          nullable: true
+
+    Direction:
+      type: object
+      properties:
+        id:
+          type: string
+        universityId:
+          type: string
+        name:
+          type: string
+          example: Биология
+        priority:
+          type: integer
+        passingScorePreviousYear:
+          type: integer
+        chancePercent:
+          type: integer
+        riskFactors:
+          $ref: '#/components/schemas/RiskFactors'
+
+    UniversityDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        chancePercent:
+          type: integer
+        idScoreTotal:
+          type: integer
+          example: 10
+        idScoreMax:
+          type: integer
+          example: 10
+        breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementScoreBreakdownItem'
+        directions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Direction'
+
+    PriorityListItem:
+      type: object
+      properties:
+        universityId:
+          type: string
+        universityName:
+          type: string
+        priority:
+          type: integer
+        chancePercent:
+          type: integer
+        myScore:
+          type: integer
+        passingScorePreviousYear:
+          type: integer
+        status:
+          $ref: '#/components/schemas/RiskStatus'
+
+    ProfileSummary:
+      type: object
+      properties:
+        fullName:
+          type: string
+        graduationYear:
+          type: integer
+          example: 2026
+        mainInterestCategory:
+          type: string
+          example: Биология
+        totalScore:
+          type: integer
+          example: 285
+        maxScore:
+          type: integer
+          example: 310
+        achievementsBonus:
+          type: integer
+          example: 10
+        admissionProbabilityPercent:
+          type: integer
+          example: 78
+        scoreDeltaVsAveragePassing:
+          type: integer
+          example: 9
+        reserveCount:
+          type: integer
+        realCount:
+          type: integer
+        riskCount:
+          type: integer
+        advice:
+          type: string
+          example: "Поставь МГУ на 1-й приоритет — у тебя запас +15 баллов и меньше конкурентов-льготников"
+
+    DeadlineEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+          example: Начало приёма заявлений
+        status:
+          type: string
+          enum: [passed, upcoming, future]
+        remind3Days:
+          type: boolean
+        remind24Hours:
+          type: boolean
+
+    StrategyFinalizeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: saved
+        summary:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriorityListItem'
+        reportUrl:
+          type: string
+          format: uri
+          nullable: true

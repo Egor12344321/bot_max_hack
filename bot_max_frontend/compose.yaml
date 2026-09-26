@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_API_MODE: ${VITE_API_MODE:-mock}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/v1}
+        VITE_MAX_MODE: ${VITE_MAX_MODE:-mock}
+    ports:
+      - "${APP_PORT:-5173}:80"
+    restart: unless-stopped

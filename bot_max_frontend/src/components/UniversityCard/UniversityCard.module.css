@@ -1,0 +1,268 @@
+.card {
+  overflow: hidden;
+
+  border-radius: 18px;
+
+  background: var(--app-card);
+}
+
+.body {
+  display: block;
+
+  width: 100%;
+
+  padding: 16px;
+
+  border: none;
+
+  background: transparent;
+
+  color: inherit;
+
+  text-align: left;
+}
+
+.top {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-bottom: 18px;
+}
+
+.nameRow {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+.priority {
+  display: flex;
+
+  width: 26px;
+  height: 26px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: var(--app-accent-soft);
+
+  color: var(--app-accent);
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.name {
+  font-size: 16px;
+
+  font-weight: 700;
+}
+
+.directions {
+  margin-top: 5px;
+  margin-left: 34px;
+
+  color: var(--app-muted);
+
+  font-size: 12px;
+}
+
+.badges {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+
+  gap: 5px;
+}
+
+.status,
+.percent {
+  padding: 4px 8px;
+
+  border-radius: 20px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+}
+
+.reserve {
+  background: var(--app-success-soft);
+
+  color: var(--chance-safe);
+}
+
+.real {
+  background: var(--app-warning-soft);
+
+  color: var(--chance-medium);
+}
+
+.risk {
+  background: var(--app-danger-soft);
+
+  color: var(--chance-risk);
+}
+
+.scores {
+  display: grid;
+
+  grid-template-columns: 1fr auto 1fr;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 14px;
+}
+
+.scoreItem {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  min-width: 0;
+
+  text-align: center;
+}
+
+.scoreItem strong {
+  font-size: 20px;
+
+  font-weight: 800;
+}
+
+.scoreItem span {
+  margin-top: 2px;
+
+  color: var(--app-muted);
+
+  font-size: 10px;
+}
+
+.myScore {
+  color: var(--app-accent);
+}
+
+.vs {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  color: var(--app-border);
+
+  font-size: 10px;
+}
+
+.line {
+  width: 32px;
+  height: 1px;
+
+  background: var(--app-border);
+}
+
+.vs span {
+  margin: 0 6px;
+}
+
+.tags {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+
+  margin-top: 14px;
+}
+
+.tag {
+  padding: 4px 8px;
+
+  border-radius: 20px;
+
+  background: var(--app-subtle);
+
+  color: var(--app-muted);
+
+  font-size: 10px;
+}
+
+.actions {
+  display: flex;
+
+  border-top: 1px solid var(--app-divider);
+}
+
+.removeButton,
+.openButton {
+  flex: 1;
+
+  height: 42px;
+
+  border: none;
+
+  background: transparent;
+
+  font-size: 13px;
+
+  font-weight: 500;
+}
+
+.removeButton {
+  color: var(--chance-risk);
+
+  border-right: 1px solid var(--app-divider);
+}
+
+.openButton {
+  color: var(--app-accent);
+}
+
+.topDirection {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 3px;
+
+  margin-bottom: 14px;
+
+  padding: 10px 12px;
+
+  border-radius: 12px;
+
+  background: var(--app-subtle);
+}
+
+.topDirectionLabel {
+  color: var(--app-muted);
+
+  font-size: 10px;
+
+  line-height: 1.2;
+}
+
+.topDirectionName {
+  color: var(--app-text);
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  line-height: 1.3;
+}

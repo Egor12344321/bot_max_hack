@@ -1,0 +1,29 @@
+import type { Achievement } from "@/api/types/onboarding";
+
+export const mockAchievements: Achievement[] = [
+  {
+    id: "gto_gold",
+    name: "Золотой знак ГТО",
+    description: "Может дать дополнительные баллы в зависимости от вуза",
+  },
+  {
+    id: "school_medal",
+    name: "Медаль за успехи в учёбе",
+    description: "Учитывается при поступлении в некоторых вузах",
+  },
+  {
+    id: "volunteering",
+    name: "Волонтёрская деятельность",
+    description: "Некоторые вузы начисляют дополнительные баллы",
+  },
+  {
+    id: "olympiad",
+    name: "Олимпиада",
+    description: "Результат олимпиады может дать дополнительные преимущества",
+  },
+  {
+    id: "essay",
+    name: "Итоговое сочинение",
+    description: "Некоторые вузы учитывают итоговое сочинение",
+  },
+];

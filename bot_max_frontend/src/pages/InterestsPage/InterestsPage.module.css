@@ -1,0 +1,93 @@
+.grid {
+  display: grid;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 10px;
+
+  margin-bottom: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  min-height: 104px;
+
+  padding: 12px 8px;
+
+  border: 1px solid var(--app-border);
+
+  border-radius: 16px;
+
+  background: var(--app-card);
+
+  color: inherit;
+
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.card:active {
+  transform: scale(0.97);
+}
+
+.cardSelected {
+  border-color: var(--app-accent);
+
+  background: var(--app-accent-soft);
+}
+
+.icon {
+  font-size: 28px;
+
+  line-height: 1;
+}
+
+.iconImage {
+  width: 32px;
+  height: 32px;
+
+  object-fit: contain;
+}
+
+.name {
+  font-size: 13px;
+
+  font-weight: 600;
+
+  text-align: center;
+
+  line-height: 1.2;
+}
+
+.message {
+  padding: 24px 0;
+
+  text-align: center;
+}
+
+.error {
+  margin-bottom: 16px;
+
+  padding: 12px;
+
+  border-radius: 12px;
+
+  background: var(--app-danger-soft);
+
+  color: var(--chance-risk);
+}
+
+@media (max-width: 360px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

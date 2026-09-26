@@ -1,0 +1,240 @@
+.page {
+  width: 100%;
+  max-width: var(--app-max-width);
+  min-height: 100vh;
+
+  margin: 0 auto;
+
+  background: var(--app-background);
+}
+
+.content {
+  padding: 24px var(--page-padding-x) 32px;
+}
+
+.success {
+  display: flex;
+
+  flex-direction: column;
+  align-items: center;
+
+  margin-bottom: 28px;
+
+  padding: 28px 20px;
+
+  border-radius: 20px;
+
+  background: var(--app-card);
+
+  text-align: center;
+}
+
+.successIcon {
+  display: flex;
+
+  width: 56px;
+  height: 56px;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 14px;
+
+  border-radius: 50%;
+
+  background: var(--app-success-soft);
+
+  color: var(--chance-safe);
+
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.successTitle {
+  margin-bottom: 6px;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.successDescription {
+  max-width: 300px;
+
+  color: var(--app-muted);
+
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sectionTitle {
+  margin-bottom: 10px;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+
+  margin-bottom: 20px;
+}
+
+.card {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  padding: 14px;
+
+  border-radius: 14px;
+
+  background: var(--app-card);
+}
+
+.priority {
+  display: flex;
+
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #0066ff;
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.info {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  margin-bottom: 5px;
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.meta {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  margin-bottom: 4px;
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  line-height: 1.4;
+
+  flex-wrap: wrap;
+}
+
+.meta > span {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 1.4em;
+}
+
+.status {
+  gap: 6px;
+}
+
+.status::before {
+  content: "";
+
+  width: 8px;
+  height: 8px;
+
+  flex: 0 0 8px;
+
+  border-radius: 50%;
+
+  background: currentColor;
+}
+
+.reserve {
+  color: var(--chance-safe);
+}
+
+.real {
+  color: var(--chance-medium);
+}
+
+.risk {
+  color: var(--chance-risk);
+}
+
+.scores {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 5px;
+
+  color: var(--app-muted);
+
+  font-size: 12px;
+}
+
+.scores strong {
+  color: var(--app-text);
+}
+
+.actions {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+.botNote {
+  margin-top: 18px;
+
+  padding: 12px 14px;
+
+  border-radius: 12px;
+
+  background: var(--app-accent-soft);
+
+  color: var(--app-muted);
+
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.state {
+  display: flex;
+
+  min-height: 100vh;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  padding: 20px;
+}
