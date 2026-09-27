@@ -45,6 +45,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            /root/bot_max_hack
+            cd /root/bot_max_hack
             docker compose pull backend
             docker compose up -d backend
