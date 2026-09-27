@@ -88,26 +88,12 @@ public class OnboardingService {
 					.build());
 			return;
 		}
-		if (text == null || text.isBlank()) {
-			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("ege.not.number", session.getLanguage()))
-					.build());
-			return;
-		}
 
-		Integer score;
-		try {
-			score = Integer.valueOf(text.trim());
-		} catch (NumberFormatException exception) {
+		Integer score = parseScore(text);
+		if (score == null) {
+			log.debug("Сессия {}: не распознан балл «{}», ждём число 0..100", userId, text);
 			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("ege.not.number", session.getLanguage()))
-					.build());
-			return;
-		}
-		if (score < 0 || score > 100) {
-			log.debug("Балл вне диапазона у сессии {}: {}", userId, score);
-			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("ege.invalid.score", session.getLanguage()))
+					.text(msg("ege.score.invalid", session.getLanguage()))
 					.build());
 			return;
 		}
@@ -117,6 +103,18 @@ public class OnboardingService {
 		log.debug("Сессия {}: балл {} по предмету {}", userId, score, subject);
 		moveTo(session, SessionState.WAITING_FOR_EGE_MORE);
 		sendMoreSubjectsQuestion(userId, session.getLanguage());
+	}
+
+	private Integer parseScore(String text) {
+		if (text == null || text.isBlank()) {
+			return null;
+		}
+		try {
+			int score = Integer.parseInt(text.trim());
+			return score >= 0 && score <= 100 ? score : null;
+		} catch (NumberFormatException exception) {
+			return null;
+		}
 	}
 
 	private boolean isRestartCommand(String text) {

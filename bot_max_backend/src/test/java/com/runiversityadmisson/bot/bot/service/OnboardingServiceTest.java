@@ -39,7 +39,7 @@ class OnboardingServiceTest {
 	}
 
 	@Test
-	void scoreAboveRangeDoesNotChangeSessionAndSendsValidationMessage() {
+	void scoreAboveRangeDoesNotChangeSessionAndAsksAgain() {
 		Session session = sessionWaitingForScore();
 		SessionService sessionService = mock(SessionService.class);
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
@@ -50,8 +50,25 @@ class OnboardingServiceTest {
 
 		assertThat(session.getEgeScores()).isEmpty();
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SCORE);
-		verify(maxBotClient).sendMessage(eq(USER_ID), any(NewMessageBody.class));
+		assertThat(session.getCurrentSubject()).isEqualTo("math-profile");
+		assertThat(lastMessageText(maxBotClient)).isEqualTo("invalid");
 		verify(sessionService, never()).save(session);
+	}
+
+	@Test
+	void notANumberAsksForNumberAgainAndKeepsWaiting() {
+		Session session = sessionWaitingForScore();
+		SessionService sessionService = mock(SessionService.class);
+		MaxBotClient maxBotClient = mock(MaxBotClient.class);
+		StaticMessageSource messageSource = messageSource();
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
+		OnboardingService service = new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot");
+
+		service.handleText(USER_ID, "а сколько максимум?");
+		service.handleText(USER_ID, "80");
+
+		assertThat(session.getEgeScores()).containsEntry("math-profile", 80);
+		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_MORE);
 	}
 
 	@Test
@@ -168,10 +185,17 @@ class OnboardingServiceTest {
 		return session;
 	}
 
+	private static String lastMessageText(MaxBotClient maxBotClient) {
+		org.mockito.ArgumentCaptor<NewMessageBody> sent =
+				org.mockito.ArgumentCaptor.forClass(NewMessageBody.class);
+		verify(maxBotClient, org.mockito.Mockito.atLeastOnce()).sendMessage(eq(USER_ID), sent.capture());
+		return sent.getValue().getText();
+	}
+
 	private static StaticMessageSource messageSource() {
 		StaticMessageSource messageSource = new StaticMessageSource();
 		messageSource.addMessage("ege.more", Locale.forLanguageTag("ru"), "more");
-		messageSource.addMessage("ege.invalid.score", Locale.forLanguageTag("ru"), "invalid");
+		messageSource.addMessage("ege.score.invalid", Locale.forLanguageTag("ru"), "invalid");
 		messageSource.addMessage("button.add", Locale.forLanguageTag("ru"), "add");
 		messageSource.addMessage("button.done", Locale.forLanguageTag("ru"), "done");
 		messageSource.addMessage("greeting", Locale.forLanguageTag("ru"), "greeting");
