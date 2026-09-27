@@ -32,6 +32,10 @@ public class SessionService {
 		return session;
 	}
 
+	public Session findByUserId(Long userId) {
+		return redisTemplate.opsForValue().get(PREFIX + userId);
+	}
+
 	public void save(Session session) {
 		redisTemplate.opsForValue().set(PREFIX + session.getUserId(), session, sessionTtl);
 	}

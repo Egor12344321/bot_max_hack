@@ -1,0 +1,200 @@
+Валидация данных
+MAX передаёт стартовые параметры мини-приложению с каждым запуском. Чтобы убедиться, что данные принадлежат реальным пользователям и не были изменены, валидируйте их
+
+Абстрактная логика проверки
+Ниже описан общий алгоритм проверки объекта WebAppData. Реализуйте его на любом языке программирования
+
+Вводные данные: BOT_TOKEN — токен бота, USER_URL — URL, по которому открыто мини-приложение
+
+Извлеките фрагмент из USER_URL — данные после символа #. В нём в формате key=value содержатся параметры платформы, среди которых — WebAppData. Убедитесь, что каждый параметр встречается ровно один раз
+Преобразуйте значение WebAppData из key=value в [['key', 'value']]
+Убедитесь, что ключ hash присутствует в параметрах ровно один раз. Сохраните оригинальный хеш и исключите его из массива
+Примените URL-декодирование для всех значений (value), если ваша платформа не сделала этого автоматически
+Отсортируйте массив по ключам в алфавитном порядке a → z
+Сформируйте строку: key1=value1\nkey2=value2. Назовём её launch_params
+Вычислите secret_key — ключ для проверки подписи. Для этого подпишите токен бота с помощью HMAC-SHA256, используя строку WebAppData в качестве ключа: HMAC-SHA256('WebAppData', BOT_TOKEN)
+Вычислите собственную подпись: подпишите полученную на шаге 7 строку с помощью HMAC-SHA256, используя secret_key. В итоге это будет выглядеть так: HMAC-SHA256(secret_key, launch_params)
+Преобразуйте подпись из шага 8 в hex-строку
+Если hex-строка подписи равна значению параметра hash из оригинальной строки — данные подлинные
+Валидация данных на стороне мини-приложения
+Этап 1. Извлечение данных
+При запуске мини-приложения клиентская часть получает закодированную строку для валидации данных через WebAppData
+
+Извлеките параметры платформы из URL-фрагмента — данные после символа #. В параметре WebAppData содержатся данные для валидации. Эти данные также доступны через window.WebApp.initData
+
+Пример URL с параметрами
+
+Код
+https://example.com#WebAppData=chat%3D%257B%2522id%2522%253A12345%252C%2522type%2522%253A%2522DIALOG%2522%257D%26ip%3D192.168.0.1%26user%3D%257B%2522id%2522%253A67890%252C%2522first_name%2522%253A%2522Max%2522%252C%2522last_name%2522%253A%2522User%2522%252C%2522username%2522%253Anull%252C%2522language_code%2522%253A%2522ru%2522%252C%2522photo_url%2522%253Anull%257D%26query_id%3D4c0ab423-342b-4e45-aea4-2747dbc500cd%26auth_date%3D1771409719%26hash%3D<calculated_hash>&WebAppPlatform=web&WebAppVersion=26.2.8
+Этап 2. Подготовка данных
+Разбейте значение WebAppData по символу & на пары key=value
+Сохраните значение параметра hash и исключите его из дальнейшей обработки
+Примените URL-декодирование ко всем значениям
+Отсортируйте параметры по ключам в алфавитном порядке a → z
+Сформируйте строку launch_params, объединив пары key=value с разделителем \n (0x0A)
+Пример подготовленных данных
+
+Код
+auth_date=1771409719\nchat={"id":12345,"type":"DIALOG"}\nip=192.168.0.1\nquery_id=4c0ab423-342b-4e45-aea4-2747dbc500cd\nuser={"id":67890,"first_name":"Max","last_name":"User","username":null,"language_code":"ru","photo_url":null}
+
+// hash
+'<calculated_hash>'
+auth_date передаётся в формате Unix timestamp в секундах
+
+Этап 3. Создание ключа шифрования
+Создайте ключ шифрования secret_key с помощью алгоритма HMAC-SHA256. Используйте строку WebAppData в качестве ключа и токен бота, который вы получили при создании чат-бота на платформе MAX для партнёров:
+
+HMAC_SHA256("WebAppData", Bot Token)
+
+Код
+HMAC_SHA256(
+    "WebAppData",
+    "YOUR_BOT_TOKEN" // Bot Token
+)
+Этап 4. Вычисление подписи
+Вычислите подпись hash стартовых параметров initData. Подпишите строку launch_params с помощью HMAC-SHA256, используя secret_key в качестве криптографического ключа. Преобразуйте результат в hex-строку:
+
+hex(HMAC_SHA256(secret_key, launch_params))
+
+Этап 5. Сравнение результата
+Сравните полученную hex-строку с оригинальным значением hash из WebAppData. Если подписи совпадают — данные подлинные. Если нет — данные были изменены
+
+
+
+пример кода на java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class MaxSignValidator {
+    public static void main(String[] args) {
+        // Вводные параметры
+        String BOT_TOKEN = "YOUR_BOT_TOKEN";
+        String USER_LINK = "https://example.com#WebAppData=...&WebAppPlatform=web&WebAppVersion=26.2.8";
+
+        try {
+            // Извлекаем параметры платформы из фрагмента URL
+            String fragment = URI.create(USER_LINK).getRawFragment();
+            Map<String, String> fragmentParams = parseQueryString(fragment);
+            String appData = fragmentParams.getOrDefault("WebAppData", "");
+            String platform = fragmentParams.getOrDefault("WebAppPlatform", "");
+            String appVersion = fragmentParams.getOrDefault("WebAppVersion", "");
+
+            // Проверяем валидность WebAppData
+            System.out.println(validateAppData(appData, BOT_TOKEN));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean validateAppData(String appData, String botToken)
+            throws NoSuchAlgorithmException, InvalidKeyException {
+        if (appData == null || appData.isEmpty()) {
+            return false;
+        }
+
+        // Преобразуем appData из key1=value1&key2=value2 в [["key", "value"], ...]
+        List<String[]> params = new ArrayList<>();
+        String[] pairs = appData.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf("=");
+            if (idx > 0) {
+                String key = pair.substring(0, idx);
+                String value = URLDecoder.decode(
+                    pair.substring(idx + 1), StandardCharsets.UTF_8
+                );
+                params.add(new String[]{key, value});
+            }
+        }
+
+        // Находим оригинальный хеш
+        String originalHash = null;
+        for (String[] param : params) {
+            if ("hash".equals(param[0])) {
+                originalHash = param[1];
+                break;
+            }
+        }
+
+        // Если хеша нет — валидация невозможна
+        if (originalHash == null) {
+            return false;
+        }
+
+        // Сортируем параметры по алфавиту (a -> z)
+        params.sort(Comparator.comparing(a -> a[0]));
+
+        // Формируем строку для подписи с разделителем \n, исключаем hash
+        String launchParams = params.stream()
+                .filter(x -> !"hash".equals(x[0]))
+                .map(x -> x[0] + "=" + x[1])
+                .collect(Collectors.joining("\n"));
+
+        // Создаём secret_key: подписываем токен бота с помощью HMAC-SHA256,
+        // используя строку "WebAppData" в качестве ключа
+        byte[] secretKeyBytes = hmacSha256(
+            "WebAppData".getBytes(StandardCharsets.UTF_8),
+            botToken.getBytes(StandardCharsets.UTF_8)
+        );
+
+        // Создаём подпись параметров с помощью HMAC-SHA256, используя secret_key
+        byte[] signature = hmacSha256(
+            secretKeyBytes,
+            launchParams.getBytes(StandardCharsets.UTF_8)
+        );
+
+        // Переводим подпись в hex-формат
+        String hash = bytesToHex(signature);
+
+        // Сравниваем с полученным хешем
+        return hash.equalsIgnoreCase(originalHash);
+    }
+
+    private static byte[] hmacSha256(byte[] key, byte[] message)
+            throws NoSuchAlgorithmException, InvalidKeyException {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key, "HmacSHA256");
+        mac.init(secretKeySpec);
+        return mac.doFinal(message);
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    private static Map<String, String> parseQueryString(String query) {
+        Map<String, String> queryPairs = new LinkedHashMap<>();
+        if (query == null || query.isEmpty()) return queryPairs;
+
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf("=");
+
+            String key = (idx > 0)
+                ? URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8)
+                : URLDecoder.decode(pair, StandardCharsets.UTF_8);
+
+            String value = (idx > 0 && pair.length() > idx + 1)
+                ? URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8)
+                : "";
+
+            if (queryPairs.containsKey(key)) {
+                throw new IllegalArgumentException("Duplicate parameter found: " + key);
+            }
+
+            queryPairs.put(key, value);
+        }
+
+        return queryPairs;
+    }
+}

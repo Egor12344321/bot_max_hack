@@ -89,12 +89,11 @@ paths:
   /auth/exchange:
     post:
       tags: [Auth]
-      summary: Обменять хэндовер из бота на токен доступа мини-аппы (с поддержкой Fallback)
+      summary: Обменять подтверждённые данные MAX на токен доступа мини-аппы
       description: >
         Мини-аппа при открытии передаёт подписанные launchParams.
-        Бэкенд валидирует подпись. Если в параметрах запуска есть session_id (start_param), 
-        бэкенд привязывает токен к этой сессии. 
-        FALLBACK: Если session_id нет (прямое открытие), бэкенд создаёт новую пустую сессию.
+        Бэкенд валидирует подпись, извлекает ID пользователя MAX и находит завершённую
+        бот-сессию по этому ID. Пустые сессии при прямом открытии не создаются.
       security: []
       operationId: exchangeAuth
       requestBody:
@@ -110,7 +109,7 @@ paths:
                   description: Сырые подписанные launch-параметры от MAX SDK
       responses:
         '200':
-          description: Токен выдан, сессия (существующая или новая) прикреплена
+          description: Токен выдан, завершённая бот-сессия прикреплена
           content:
             application/json:
               schema:
@@ -125,6 +124,8 @@ paths:
                     $ref: '#/components/schemas/Session'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /sessions/{sessionId}:
     get:
@@ -817,7 +818,7 @@ components:
 
     SessionDraft:
       type: object
-      description: Агрегированный стейт сессии, собранный ботом (хранится в Redis)
+      description: Агрегированный стейт сессии, собранный ботом и сохранённый в Postgres
       properties:
         id:
           type: string

@@ -5,6 +5,7 @@ import com.runiversityadmisson.bot.bot.client.dto.NewMessageBody;
 import com.runiversityadmisson.bot.bot.session.Session;
 import com.runiversityadmisson.bot.bot.session.SessionService;
 import com.runiversityadmisson.bot.bot.session.SessionState;
+import com.runiversityadmisson.bot.web.session.ApplicantSessionService;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.StaticMessageSource;
@@ -30,7 +31,7 @@ class OnboardingServiceTest {
 		StaticMessageSource messageSource = messageSource();
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot").handleText(USER_ID, "88");
+		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot", mock(ApplicantSessionService.class)).handleText(USER_ID, "88");
 
 		assertThat(session.getEgeScores()).containsEntry("math-profile", 88);
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_MORE);
@@ -46,7 +47,7 @@ class OnboardingServiceTest {
 		StaticMessageSource messageSource = messageSource();
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot").handleText(USER_ID, "101");
+		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot", mock(ApplicantSessionService.class)).handleText(USER_ID, "101");
 
 		assertThat(session.getEgeScores()).isEmpty();
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SCORE);
@@ -62,7 +63,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		StaticMessageSource messageSource = messageSource();
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
-		OnboardingService service = new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot");
+		OnboardingService service = new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot", mock(ApplicantSessionService.class));
 
 		service.handleText(USER_ID, "а сколько максимум?");
 		service.handleText(USER_ID, "80");
@@ -79,7 +80,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot").start(USER_ID);
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot", mock(ApplicantSessionService.class)).start(USER_ID);
 
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SCORE);
 		assertThat(session.getEgeScores()).containsEntry("russian", 91);
@@ -95,7 +96,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot").start(USER_ID);
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot", mock(ApplicantSessionService.class)).start(USER_ID);
 
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_LANGUAGE);
 		verify(sessionService).save(session);
@@ -115,7 +116,7 @@ class OnboardingServiceTest {
 		messages.setBasename("messages");
 		messages.setDefaultEncoding("UTF-8");
 		messages.setFallbackToSystemLocale(false);
-		OnboardingService service = new OnboardingService(client, sessionService, messages, "test_bot");
+		OnboardingService service = new OnboardingService(client, sessionService, messages, "test_bot", mock(ApplicantSessionService.class));
 		service.handleCallback(USER_ID, "language-callback", "lang_ru");
 		org.mockito.ArgumentCaptor<NewMessageBody> question =
 				org.mockito.ArgumentCaptor.forClass(NewMessageBody.class);
@@ -151,7 +152,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(fresh);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot")
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot", mock(ApplicantSessionService.class))
 				.handleText(USER_ID, "/restart");
 
 		verify(sessionService).delete(USER_ID);
@@ -169,7 +170,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(fresh);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot")
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot", mock(ApplicantSessionService.class))
 				.handleText(USER_ID, "/restart@t722_hakaton_max_bot");
 
 		verify(sessionService).delete(USER_ID);

@@ -5,6 +5,7 @@ import com.runiversityadmisson.bot.bot.client.dto.NewMessageBody;
 import com.runiversityadmisson.bot.bot.session.Session;
 import com.runiversityadmisson.bot.bot.session.SessionService;
 import com.runiversityadmisson.bot.bot.session.SessionState;
+import com.runiversityadmisson.bot.web.session.ApplicantSessionService;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -23,13 +24,16 @@ public class OnboardingService {
 	private final SessionService sessionService;
 	private final MessageSource messageSource;
 	private final String webApp;
+	private final ApplicantSessionService applicantSessionService;
 
 	public OnboardingService(MaxBotClient maxBotClient, SessionService sessionService,
-			MessageSource messageSource, @Value("${max.bot.web-app}") String webApp) {
+			MessageSource messageSource, @Value("${max.bot.web-app}") String webApp,
+			ApplicantSessionService applicantSessionService) {
 		this.maxBotClient = maxBotClient;
 		this.sessionService = sessionService;
 		this.messageSource = messageSource;
 		this.webApp = webApp;
+		this.applicantSessionService = applicantSessionService;
 	}
 
 	public void start(Long userId) {
@@ -77,6 +81,7 @@ public class OnboardingService {
 		if (isRestartCommand(text)) {
 			log.info("Пользователь {} запросил перезапуск онбординга", userId);
 			sessionService.delete(userId);
+			applicantSessionService.deleteByMaxUserId(userId);
 			start(userId);
 			return;
 		}
@@ -146,9 +151,10 @@ public class OnboardingService {
 		} else {
 			session.setTrack("rf_quota_or_paid");
 			moveTo(session, SessionState.READY_FOR_MINAPP);
+			completeOnboarding(session);
 			maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
 					.text(msg("track.foreigner", lang))
-					.attachment(openMiniAppButton(lang, session.getUserId()))
+					.attachment(openMiniAppButton(lang))
 					.build());
 		}
 	}
@@ -157,17 +163,23 @@ public class OnboardingService {
 		String lang = session.getLanguage();
 		log.info("Сессия {} завершила ввод баллов: {}", session.getUserId(), session.getEgeScores().size());
 		moveTo(session, SessionState.READY_FOR_MINAPP);
+		completeOnboarding(session);
 		maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
 				.text(msg("ege.done", lang))
-				.attachment(openMiniAppButton(lang, session.getUserId()))
+				.attachment(openMiniAppButton(lang))
 				.build());
 	}
 
-	private NewMessageBody.Attachment openMiniAppButton(String lang, Long userId) {
+	private void completeOnboarding(Session session) {
+		applicantSessionService.saveCompletedBotSession(session);
+		sessionService.delete(session.getUserId());
+	}
+
+	private NewMessageBody.Attachment openMiniAppButton(String lang) {
 		return NewMessageBody.Attachment.inlineKeyboard(List.of(
 				List.of(NewMessageBody.Button.openApp(
 						msg("button.open.app", lang),
-						"user_" + userId, webApp
+						null, webApp
 				))
 		));
 	}
