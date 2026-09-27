@@ -10,8 +10,6 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY certs/russian_trusted_root_ca.crt /usr/local/share/ca-certificates/
-COPY certs/russian_trusted_sub_ca.crt /usr/local/share/ca-certificates/
 
 RUN apk add --no-cache ca-certificates curl && \
     curl -o /usr/local/share/ca-certificates/russian_trusted_root_ca.crt \
