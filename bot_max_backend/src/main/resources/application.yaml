@@ -1,3 +1,19 @@
 spring:
   application:
     name: bot
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:mydatabase}
+    username: ${POSTGRES_USER:myuser}
+    password: ${POSTGRES_PASSWORD:secret}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+max:
+  bot:
+    token: ${MAX_BOT_TOKEN:}
+    webhook-secret: ${MAX_WEBHOOK_SECRET:}
+
+bot:
+  session-ttl: PT1H
