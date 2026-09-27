@@ -15,5 +15,14 @@ max:
     token: ${MAX_BOT_TOKEN:}
     webhook-secret: ${MAX_WEBHOOK_SECRET:}
 
+jwt:
+  secret: ${JWT_SECRET}
+  ttl: ${JWT_TTL:3600}
+
+logging:
+  level:
+    com.runiversityadmisson.bot: DEBUG
+    org.springframework.web: INFO
+
 bot:
   session-ttl: PT1H

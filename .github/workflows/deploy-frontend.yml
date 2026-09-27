@@ -45,6 +45,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /path/to/your/project
+            cd /root/bot_max_hack
             docker compose pull frontend
             docker compose up -d frontend
