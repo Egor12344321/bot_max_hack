@@ -9,6 +9,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
 
 max:
   bot:
@@ -16,7 +20,7 @@ max:
     webhook-secret: ${MAX_WEBHOOK_SECRET:}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:local-dev-secret-change-me-32chars}
   ttl: ${JWT_TTL:3600}
 
 logging:

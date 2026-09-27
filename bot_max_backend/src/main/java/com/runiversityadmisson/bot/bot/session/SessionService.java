@@ -1,45 +1,42 @@
 package com.runiversityadmisson.bot.bot.session;
 
 import java.time.Duration;
-import java.util.Optional;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class SessionService {
 
-	private static final String KEY_PREFIX = "session:";
+	private static final String PREFIX = "abiturient:session:";
 
-	private final RedisTemplate<String, BotSession> botSessionRedisTemplate;
+	private final RedisTemplate<String, Session> redisTemplate;
+	private final Duration sessionTtl;
 
-	@Value("${bot.session-ttl:PT1H}")
-	private Duration sessionTtl;
-
-	public Optional<BotSession> get(long userId) {
-		return Optional.ofNullable(botSessionRedisTemplate.opsForValue().get(key(userId)));
+	public SessionService(
+			RedisTemplate<String, Session> redisTemplate,
+			@Value("${bot.session-ttl:PT1H}") Duration sessionTtl
+	) {
+		this.redisTemplate = redisTemplate;
+		this.sessionTtl = sessionTtl;
 	}
 
-	public BotSession getOrCreate(long userId) {
-		return get(userId).orElseGet(() -> {
-			BotSession session = BotSession.initial(userId);
+	public Session getOrCreate(Long userId) {
+		Session session = redisTemplate.opsForValue().get(PREFIX + userId);
+		if (session == null) {
+			session = new Session();
+			session.setUserId(userId);
 			save(session);
-			return session;
-		});
+		}
+		return session;
 	}
 
-	public void save(BotSession session) {
-		botSessionRedisTemplate.opsForValue().set(key(session.userId()), session, sessionTtl);
+	public void save(Session session) {
+		redisTemplate.opsForValue().set(PREFIX + session.getUserId(), session, sessionTtl);
 	}
 
-	public void clear(long userId) {
-		botSessionRedisTemplate.delete(key(userId));
-	}
-
-	private String key(long userId) {
-		return KEY_PREFIX + userId;
+	public void delete(Long userId) {
+		redisTemplate.delete(PREFIX + userId);
 	}
 }

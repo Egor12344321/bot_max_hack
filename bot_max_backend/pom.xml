@@ -127,11 +127,6 @@
 		</dependency>
 		<dependency>
 			<groupId>ru.etsft.max</groupId>
-			<artifactId>max-bot-api-client</artifactId>
-			<version>0.5.0</version>
-		</dependency>
-		<dependency>
-			<groupId>ru.etsft.max</groupId>
 			<artifactId>max-bot-api-jackson</artifactId>
 			<version>0.5.0</version>
 		</dependency>

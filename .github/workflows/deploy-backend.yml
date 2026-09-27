@@ -21,9 +21,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build JAR
+      - name: Тесты и сборка JAR
         working-directory: ./bot_max_backend
-        run: mvn clean package -DskipTests
+        run: mvn -B clean verify
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3

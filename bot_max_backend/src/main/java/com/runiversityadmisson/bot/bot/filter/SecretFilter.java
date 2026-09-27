@@ -1,5 +1,6 @@
 package com.runiversityadmisson.bot.bot.filter;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,15 @@ public class SecretFilter extends OncePerRequestFilter {
 	@Value("${max.bot.webhook-secret:}")
 	private String webhookSecret;
 
+	@PostConstruct
+	void logConfiguration() {
+		if (webhookSecret.isBlank()) {
+			log.error("MAX_WEBHOOK_SECRET не задан: все вебхуки будут отклонены с 401");
+		} else {
+			log.info("Проверка секрета вебхуков включена");
+		}
+	}
+
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		return !request.getRequestURI().startsWith(request.getContextPath() + "/webhook/");
@@ -34,7 +44,8 @@ public class SecretFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 		String receivedSecret = request.getHeader(SECRET_HEADER);
 		if (webhookSecret.isBlank() || receivedSecret == null || !secretsMatch(webhookSecret, receivedSecret)) {
-			log.warn("Отклонён вебхук: неверный секрет");
+			log.warn("Отклонён вебхук {}: секрет не задан в конфиге либо не совпадает с {}",
+					request.getRequestURI(), SECRET_HEADER);
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 			return;
 		}
