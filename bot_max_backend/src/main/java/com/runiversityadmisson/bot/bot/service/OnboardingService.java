@@ -74,6 +74,12 @@ public class OnboardingService {
 	}
 
 	public void handleText(Long userId, String text) {
+		if (isRestartCommand(text)) {
+			log.info("Пользователь {} запросил перезапуск онбординга", userId);
+			sessionService.delete(userId);
+			start(userId);
+			return;
+		}
 		Session session = sessionService.getOrCreate(userId);
 
 		if (session.getState() != SessionState.WAITING_FOR_EGE_SCORE) {
@@ -111,6 +117,14 @@ public class OnboardingService {
 		log.debug("Сессия {}: балл {} по предмету {}", userId, score, subject);
 		moveTo(session, SessionState.WAITING_FOR_EGE_MORE);
 		sendMoreSubjectsQuestion(userId, session.getLanguage());
+	}
+
+	private boolean isRestartCommand(String text) {
+		if (text == null) {
+			return false;
+		}
+		String command = text.trim().split("\\s+", 2)[0].toLowerCase(Locale.ROOT);
+		return command.equals("/restart") || command.startsWith("/restart@");
 	}
 
 	private void handleLanguage(Session session, String language) {

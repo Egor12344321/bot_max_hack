@@ -13,6 +13,29 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class MaxBotClientTest {
 	@Test
+	void registersRestartInCommandMenu() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://example.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		server.expect(requestTo("https://example.test/me/commands"))
+				.andExpect(method(HttpMethod.PATCH))
+				.andExpect(header("Authorization", "test-token"))
+				.andExpect(content().json("""
+						{"commands":[{"name":"restart","description":"Начать заново"}]}
+						"""))
+				.andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+		new MaxBotClient("test-token", builder.build()).registerCommands();
+		server.verify();
+	}
+
+	@Test
+	void skipsRegistrationWithoutToken() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://example.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		new MaxBotClient("", builder.build()).registerCommands();
+		server.verify();
+	}
+
+	@Test
 	void callbackIdIsQueryParameterAndNotificationIsBody() {
 		RestClient.Builder builder = RestClient.builder().baseUrl("https://example.test");
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

@@ -123,6 +123,42 @@ class OnboardingServiceTest {
 				.isEqualTo(messages.getMessage("ege.ask.subject", null, Locale.forLanguageTag("ru")));
 	}
 
+	@Test
+	void restartCommandDropsSessionAndStartsOnboardingFromLanguage() {
+		Session existing = sessionWaitingForScore();
+		existing.getEgeScores().put("russian", 91);
+		existing.setState(SessionState.WAITING_FOR_EGE_MORE);
+		Session fresh = new Session();
+		fresh.setUserId(USER_ID);
+		SessionService sessionService = mock(SessionService.class);
+		MaxBotClient maxBotClient = mock(MaxBotClient.class);
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(fresh);
+
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot")
+				.handleText(USER_ID, "/restart");
+
+		verify(sessionService).delete(USER_ID);
+		assertThat(fresh.getState()).isEqualTo(SessionState.WAITING_FOR_LANGUAGE);
+		assertThat(fresh.getEgeScores()).isEmpty();
+		verify(sessionService).save(fresh);
+		verify(maxBotClient).sendMessage(eq(USER_ID), any(NewMessageBody.class));
+	}
+
+	@Test
+	void restartCommandWithBotSuffixIsAlsoRecognized() {
+		Session fresh = new Session();
+		fresh.setUserId(USER_ID);
+		SessionService sessionService = mock(SessionService.class);
+		MaxBotClient maxBotClient = mock(MaxBotClient.class);
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(fresh);
+
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot")
+				.handleText(USER_ID, "/restart@t722_hakaton_max_bot");
+
+		verify(sessionService).delete(USER_ID);
+		assertThat(fresh.getState()).isEqualTo(SessionState.WAITING_FOR_LANGUAGE);
+	}
+
 	private static Session sessionWaitingForScore() {
 		Session session = new Session();
 		session.setUserId(USER_ID);

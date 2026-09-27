@@ -9,6 +9,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.util.Map;
+import java.util.List;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 
 @Component
 @Slf4j
@@ -25,6 +28,27 @@ public class MaxBotClient {
     MaxBotClient(String token, RestClient restClient) {
         this.token = token;
         this.restClient = restClient;
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void registerCommands() {
+        if (token.isBlank()) {
+            return;
+        }
+        try {
+            restClient.patch()
+                    .uri("/me/commands")
+                    .header("Authorization", token)
+                    .header("Content-Type", "application/json")
+                    .body(Map.of("commands", List.of(
+                            Map.of("name", "restart", "description", "Начать заново")
+                    )))
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Команда /restart зарегистрирована в MAX");
+        } catch (RestClientException exception) {
+            log.warn("Не удалось зарегистрировать команду /restart: {}", exception.getClass().getSimpleName());
+        }
     }
 
     public void sendMessage(long userId, NewMessageBody body) {
