@@ -124,11 +124,11 @@ public class OnboardingService {
 		String lang = session.getLanguage();
 		log.info("Сессия {}: гражданство={}", session.getUserId(), country);
 
-		if (EAEU_COUNTRIES.contains(country)) {
+		if ("RU".equals(country) || EAEU_COUNTRIES.contains(country)) {
 			session.setTrack("domestic_equivalent");
 			moveTo(session, SessionState.WAITING_FOR_EGE_SUBJECT);
 			maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
-					.text(msg("track.eaeu", lang))
+					.text(msg("RU".equals(country) ? "track.russia" : "track.eaeu", lang))
 					.build());
 			sendSubjectQuestion(session.getUserId(), lang);
 		} else {
@@ -179,6 +179,7 @@ public class OnboardingService {
 		maxBotClient.sendMessage(userId, NewMessageBody.builder()
 				.text(msg("ask.citizenship", lang))
 				.attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
+						List.of(NewMessageBody.Button.callback(msg("citizenship.RU", lang), "citizenship_RU")),
 						List.of(
 								NewMessageBody.Button.callback(msg("citizenship.BY", lang), "citizenship_BY"),
 								NewMessageBody.Button.callback(msg("citizenship.KZ", lang), "citizenship_KZ")

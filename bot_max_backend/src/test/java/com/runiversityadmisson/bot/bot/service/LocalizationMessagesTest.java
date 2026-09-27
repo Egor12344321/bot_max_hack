@@ -13,6 +13,8 @@ class LocalizationMessagesTest {
 			"greeting",
 			"ask.citizenship",
 			"track.eaeu",
+			"track.russia",
+			"citizenship.RU",
 			"track.foreigner",
 			"ege.ask.subject",
 			"ege.ask.score",

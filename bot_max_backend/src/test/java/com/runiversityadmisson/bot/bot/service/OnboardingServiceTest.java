@@ -85,6 +85,44 @@ class OnboardingServiceTest {
 		verify(maxBotClient).sendMessage(eq(USER_ID), any(NewMessageBody.class));
 	}
 
+	@Test
+	void russiaIsFirstCitizenshipOptionAndLeadsToEge() {
+		Session session = new Session();
+		session.setUserId(USER_ID);
+		session.setState(SessionState.WAITING_FOR_LANGUAGE);
+		SessionService sessionService = mock(SessionService.class);
+		MaxBotClient client = mock(MaxBotClient.class);
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
+		org.springframework.context.support.ResourceBundleMessageSource messages =
+				new org.springframework.context.support.ResourceBundleMessageSource();
+		messages.setBasename("messages");
+		messages.setDefaultEncoding("UTF-8");
+		messages.setFallbackToSystemLocale(false);
+		OnboardingService service = new OnboardingService(client, sessionService, messages, "test_bot");
+		service.handleCallback(USER_ID, "language-callback", "lang_ru");
+		org.mockito.ArgumentCaptor<NewMessageBody> question =
+				org.mockito.ArgumentCaptor.forClass(NewMessageBody.class);
+		verify(client).sendMessage(eq(USER_ID), question.capture());
+		NewMessageBody.KeyboardPayload keyboard =
+				(NewMessageBody.KeyboardPayload) question.getValue().getAttachments().getFirst().payload();
+		assertThat(keyboard.buttons().getFirst().getFirst().text()).isEqualTo("Россия");
+		assertThat(keyboard.buttons().getFirst().getFirst().payload()).isEqualTo("citizenship_RU");
+		org.mockito.Mockito.clearInvocations(client);
+
+		service.handleCallback(USER_ID, "country-callback", "citizenship_RU");
+
+		assertThat(session.getCitizenship()).isEqualTo("RU");
+		assertThat(session.getTrack()).isEqualTo("domestic_equivalent");
+		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SUBJECT);
+		org.mockito.ArgumentCaptor<NewMessageBody> replies =
+				org.mockito.ArgumentCaptor.forClass(NewMessageBody.class);
+		verify(client, org.mockito.Mockito.times(2)).sendMessage(eq(USER_ID), replies.capture());
+		assertThat(replies.getAllValues().getFirst().getText())
+				.isEqualTo(messages.getMessage("track.russia", null, Locale.forLanguageTag("ru")));
+		assertThat(replies.getAllValues().getLast().getText())
+				.isEqualTo(messages.getMessage("ege.ask.subject", null, Locale.forLanguageTag("ru")));
+	}
+
 	private static Session sessionWaitingForScore() {
 		Session session = new Session();
 		session.setUserId(USER_ID);
