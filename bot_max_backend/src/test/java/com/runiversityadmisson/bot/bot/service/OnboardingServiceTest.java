@@ -30,7 +30,7 @@ class OnboardingServiceTest {
 		StaticMessageSource messageSource = messageSource();
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource).handleText(USER_ID, "88");
+		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot").handleText(USER_ID, "88");
 
 		assertThat(session.getEgeScores()).containsEntry("math-profile", 88);
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_MORE);
@@ -46,7 +46,7 @@ class OnboardingServiceTest {
 		StaticMessageSource messageSource = messageSource();
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource).handleText(USER_ID, "101");
+		new OnboardingService(maxBotClient, sessionService, messageSource, "test_bot").handleText(USER_ID, "101");
 
 		assertThat(session.getEgeScores()).isEmpty();
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SCORE);
@@ -62,7 +62,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource()).start(USER_ID);
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot").start(USER_ID);
 
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_EGE_SCORE);
 		assertThat(session.getEgeScores()).containsEntry("russian", 91);
@@ -78,7 +78,7 @@ class OnboardingServiceTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
-		new OnboardingService(maxBotClient, sessionService, messageSource()).start(USER_ID);
+		new OnboardingService(maxBotClient, sessionService, messageSource(), "test_bot").start(USER_ID);
 
 		assertThat(session.getState()).isEqualTo(SessionState.WAITING_FOR_LANGUAGE);
 		verify(sessionService).save(session);

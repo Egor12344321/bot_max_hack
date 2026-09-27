@@ -40,7 +40,8 @@ class UpdateJsonTest {
 				  "callback": {
 				    "callback_id": "callback-1",
 				    "payload": "lang_kk",
-				    "sender": { "user_id": 54321 }
+				    "timestamp": 1720000000000,
+				    "user": { "user_id": 54321, "first_name": "Тест", "is_bot": false }
 				  }
 				}
 				""";
@@ -50,6 +51,6 @@ class UpdateJsonTest {
 		assertThat(update.getUpdateType()).isEqualTo("message_callback");
 		assertThat(update.getCallback().getCallbackId()).isEqualTo("callback-1");
 		assertThat(update.getCallback().getPayload()).isEqualTo("lang_kk");
-		assertThat(update.getCallback().getSender().getUserId()).isEqualTo(54321L);
+		assertThat(update.getCallback().getUser().getUserId()).isEqualTo(54321L);
 	}
 }

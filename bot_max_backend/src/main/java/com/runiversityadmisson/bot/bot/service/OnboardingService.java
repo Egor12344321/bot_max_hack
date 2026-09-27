@@ -8,13 +8,12 @@ import com.runiversityadmisson.bot.bot.session.SessionState;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class OnboardingService {
 
@@ -23,6 +22,15 @@ public class OnboardingService {
 	private final MaxBotClient maxBotClient;
 	private final SessionService sessionService;
 	private final MessageSource messageSource;
+	private final String webApp;
+
+	public OnboardingService(MaxBotClient maxBotClient, SessionService sessionService,
+			MessageSource messageSource, @Value("${max.bot.web-app}") String webApp) {
+		this.maxBotClient = maxBotClient;
+		this.sessionService = sessionService;
+		this.messageSource = messageSource;
+		this.webApp = webApp;
+	}
 
 	public void start(Long userId) {
 		Session session = sessionService.getOrCreate(userId);
@@ -147,7 +155,7 @@ public class OnboardingService {
 		return NewMessageBody.Attachment.inlineKeyboard(List.of(
 				List.of(NewMessageBody.Button.openApp(
 						msg("button.open.app", lang),
-						"user_" + userId
+						"user_" + userId, webApp
 				))
 		));
 	}

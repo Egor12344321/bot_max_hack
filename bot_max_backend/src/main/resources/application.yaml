@@ -18,6 +18,7 @@ max:
   bot:
     token: ${MAX_BOT_TOKEN:}
     webhook-secret: ${MAX_WEBHOOK_SECRET:}
+    web-app: ${MAX_WEB_APP:t722_hakaton_max_bot}
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-change-me-32chars}

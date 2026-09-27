@@ -58,7 +58,7 @@ public class ProcessUpdateService {
 			log.debug("message_callback без callback");
 			return;
 		}
-		Long userId = userIdOf(callback.getSender());
+		Long userId = userIdOf(callback.getUser());
 		if (userId == null) {
 			return;
 		}

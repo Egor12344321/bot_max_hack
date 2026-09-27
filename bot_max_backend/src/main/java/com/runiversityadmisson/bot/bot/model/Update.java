@@ -63,7 +63,7 @@ public class Update {
         @JsonProperty("callback_id")
         private String callbackId;
         private String payload;
-        private User sender;
-        private Message message;
+        private User user;
+        private Long timestamp;
     }
 }
