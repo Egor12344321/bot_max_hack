@@ -1,29 +1,28 @@
-package com.runiversityadmisson.bot.auth;
+package com.runiversityadmisson.bot.web.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.runiversityadmisson.bot.web.exception.InvalidInitDataException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-
-import com.runiversityadmisson.bot.web.auth.InvalidInitDataException;
-import com.runiversityadmisson.bot.web.auth.MaxInitDataValidator;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.json.JsonMapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-class MaxInitDataValidatorTest {
+class InitDataValidatorTest {
 
 	private static final String BOT_TOKEN = "test-bot-token";
 
 	@Test
 	void acceptsSignedDataAndReturnsMaxUserId() {
-		MaxInitDataValidator validator = validator();
+		InitDataValidator validator = validator();
 
-		Long userId = validator.validateAndGetUserId(signedData(Map.of(
+		Long userId = validator.validateAndExtractUserId(signedData(Map.of(
 				"auth_date", "1771409719",
 				"user", "{\"id\":67890,\"first_name\":\"Max\"}"
 		)));
@@ -33,24 +32,26 @@ class MaxInitDataValidatorTest {
 
 	@Test
 	void rejectsChangedData() {
-		MaxInitDataValidator validator = validator();
+		InitDataValidator validator = validator();
 		String initData = signedData(Map.of("user", "{\"id\":67890}"));
 
-		assertThatThrownBy(() -> validator.validateAndGetUserId(initData.replace("67890", "67891")))
+		assertThatThrownBy(() -> validator.validateAndExtractUserId(initData.replace("67890", "67891")))
 				.isInstanceOf(InvalidInitDataException.class);
 	}
 
 	@Test
 	void rejectsDuplicateParameters() {
-		MaxInitDataValidator validator = validator();
+		InitDataValidator validator = validator();
 		String initData = signedData(Map.of("user", "{\"id\":67890}"));
 
-		assertThatThrownBy(() -> validator.validateAndGetUserId(initData + "&user=%7B%22id%22%3A67890%7D"))
+		assertThatThrownBy(() -> validator.validateAndExtractUserId(initData + "&user=%7B%22id%22%3A67890%7D"))
 				.isInstanceOf(InvalidInitDataException.class);
 	}
 
-	private MaxInitDataValidator validator() {
-		return new MaxInitDataValidator(BOT_TOKEN, new ObjectMapper());
+	private InitDataValidator validator() {
+		InitDataValidator validator = new InitDataValidator(JsonMapper.builder().build());
+		ReflectionTestUtils.setField(validator, "botToken", BOT_TOKEN);
+		return validator;
 	}
 
 	private String signedData(Map<String, String> values) {
