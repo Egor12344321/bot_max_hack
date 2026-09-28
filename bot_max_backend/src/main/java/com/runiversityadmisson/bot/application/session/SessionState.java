@@ -1,0 +1,11 @@
+package com.runiversityadmisson.bot.application.session;
+
+public enum SessionState {
+	NEW,
+	WAITING_FOR_LANGUAGE,
+	WAITING_FOR_CITIZENSHIP,
+	WAITING_FOR_EGE_SUBJECT,
+	WAITING_FOR_EGE_SCORE,
+	WAITING_FOR_EGE_MORE,
+	READY_FOR_MINAPP
+}
