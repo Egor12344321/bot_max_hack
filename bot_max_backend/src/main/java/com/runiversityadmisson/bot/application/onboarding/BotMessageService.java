@@ -138,6 +138,7 @@ public class BotMessageService {
     }
 
     private NewMessageBody.Attachment openMiniAppButton(String lang) {
+		log.info("MAX: формируется кнопка открытия mini-app, webApp={}", webApp);
         return NewMessageBody.Attachment.inlineKeyboard(List.of(
                 List.of(NewMessageBody.Button.openApp(
                         msg("button.open.app", lang),

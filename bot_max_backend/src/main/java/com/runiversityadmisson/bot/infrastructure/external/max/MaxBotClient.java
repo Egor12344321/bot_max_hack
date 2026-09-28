@@ -63,8 +63,9 @@ public class MaxBotClient {
                     .body(body)
                     .retrieve()
                     .toBodilessEntity();
+			log.debug("MAX: сообщение принято API");
         } catch (RestClientException exception) {
-            log.error("Не удалось отправить сообщение пользователю {}", userId, exception);
+			log.error("MAX: не удалось отправить сообщение, причина={}", exception.getClass().getSimpleName());
         }
     }
 
@@ -80,8 +81,9 @@ public class MaxBotClient {
                     ))
                     .retrieve()
                     .toBodilessEntity();
+			log.debug("MAX: callback подтверждён API");
         } catch (RestClientException exception) {
-            log.warn("Не удалось подтвердить callback {}", callbackId, exception);
+			log.warn("MAX: не удалось подтвердить callback, причина={}", exception.getClass().getSimpleName());
         }
     }
 }

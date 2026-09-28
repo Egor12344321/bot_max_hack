@@ -33,8 +33,9 @@ public class ExchangeController {
     @PostMapping
     public ResponseEntity<ExchangeResponse> exchange(
             @Valid @RequestBody ExchangeRequest request) {
-        log.debug("Exchange request received");
+		log.info("Exchange: получен запрос на обмен launchParams, размер={}", request.launchParams().length());
         ExchangeResponse response = exchangeUseCase.exchange(request.launchParams());
+		log.info("Exchange: JWT успешно выдан");
         return ResponseEntity.ok(response);
     }
 }

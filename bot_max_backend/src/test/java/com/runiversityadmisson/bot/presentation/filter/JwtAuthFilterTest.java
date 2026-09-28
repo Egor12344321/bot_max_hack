@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.runiversityadmisson.bot.presentation.security.JwtService;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,20 @@ class JwtAuthFilterTest {
 		});
 
 		assertThat(response.getStatus()).isEqualTo(401);
+	}
+
+	@Test
+	void skipsJwtValidationForPublicExchangeRoute() throws Exception {
+		JwtService jwtService = new JwtService("test-secret-must-have-at-least-32-characters", 3600);
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/v1/auth/exchange");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		request.addHeader("Authorization", "Bearer invalid");
+		AtomicBoolean filterChainCalled = new AtomicBoolean();
+
+		new JwtAuthFilter(jwtService).doFilter(request, response, (ignoredRequest, ignoredResponse) ->
+				filterChainCalled.set(true));
+
+		assertThat(filterChainCalled).isTrue();
+		assertThat(response.getStatus()).isEqualTo(200);
 	}
 }

@@ -57,16 +57,21 @@ public class InitDataValidator {
      */
     public Long validateAndExtractUserId(String initData) {
         if (initData == null || initData.isBlank()) {
+			log.warn("MAX launchParams отклонены: пустое значение");
             throw new InvalidInitDataException("initData is empty");
         }
 
         List<String[]> params = parse(initData);
+		log.debug("MAX launchParams разобраны: параметров={}, hash={}, user={}",
+				params.size(), hasParam(params, "hash"), hasParam(params, "user"));
 
         if (!isValid(params)) {
             throw new InvalidInitDataException("initData signature is invalid");
         }
 
-        return extractUserId(params);
+		Long userId = extractUserId(params);
+		log.debug("MAX launchParams: подпись и пользователь подтверждены");
+		return userId;
     }
 
     /**
@@ -101,9 +106,10 @@ public class InitDataValidator {
         String computedHash = bytesToHex(signature);
 
         if (!computedHash.equalsIgnoreCase(originalHash)) {
-            log.warn("initData: signature mismatch");
+			log.warn("MAX launchParams отклонены: подпись не совпала");
             return false;
         }
+		log.debug("MAX launchParams: подпись совпала");
         return true;
     }
 
@@ -152,6 +158,10 @@ public class InitDataValidator {
         }
         return params;
     }
+
+	private boolean hasParam(List<String[]> params, String name) {
+		return params.stream().anyMatch(param -> name.equals(param[0]));
+	}
 
     /** Парсит JSON, оборачивая IOException в доменное исключение. */
     private JsonNode readTree(String json) {

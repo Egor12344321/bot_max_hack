@@ -55,6 +55,7 @@ public class JwtService {
     public String generate(UUID userId) {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(ttlSeconds);
+		log.debug("JWT: формирование токена со сроком жизни {} секунд", ttlSeconds);
 
         return Jwts.builder()
                 .subject(userId.toString())
@@ -80,6 +81,7 @@ public class JwtService {
             }
             return UUID.fromString(subject);
         } catch (JwtException | IllegalArgumentException exception) {
+			log.debug("JWT: не удалось извлечь пользователя, причина={}", exception.getClass().getSimpleName());
             throw new InvalidJwtException("Invalid token: " + exception.getMessage(), exception);
         }
     }
@@ -95,7 +97,7 @@ public class JwtService {
             parse(token);
             return true;
         } catch (JwtException | IllegalArgumentException exception) {
-            log.debug("JWT validation failed: {}", exception.getMessage());
+			log.debug("JWT: валидация не пройдена, причина={}", exception.getClass().getSimpleName());
             return false;
         }
     }

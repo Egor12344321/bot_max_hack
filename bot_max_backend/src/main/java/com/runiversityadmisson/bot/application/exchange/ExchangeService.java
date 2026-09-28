@@ -23,11 +23,16 @@ public class ExchangeService {
     @Transactional
     public ExchangeResponse exchange(String launchParams) {
         Long maxUserId = initDataValidator.validateAndExtractUserId(launchParams);
+		log.info("Exchange: подпись MAX launchParams подтверждена");
 
         User user = userRepository.findByMaxUserId(maxUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("Завершённая заявка не найдена"));
+                .orElseThrow(() -> {
+					log.warn("Exchange: для пользователя MAX нет завершённой заявки");
+					return new ResourceNotFoundException("Завершённая заявка не найдена");
+				});
 
         String accessToken = jwtService.generate(user.getId());
+		log.info("Exchange: JWT сформирован для завершённой заявки");
 
         return new ExchangeResponse(
                 accessToken,
