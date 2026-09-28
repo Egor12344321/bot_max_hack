@@ -1,12 +1,16 @@
 package com.runiversityadmisson.bot.presentation.controller;
 
+import com.runiversityadmisson.bot.application.dto.request.SetAchievementsRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetCitizenshipRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetEgeScoresRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetInterestsRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetLanguageRequest;
+import com.runiversityadmisson.bot.application.dto.request.SetPrivilegesRequest;
 import com.runiversityadmisson.bot.application.dto.response.CitizenshipResultResponse;
 import com.runiversityadmisson.bot.application.dto.response.EgeScoresSubmissionResponse;
+import com.runiversityadmisson.bot.application.dto.response.PrivilegeApplyResultResponse;
 import com.runiversityadmisson.bot.application.dto.response.SessionResponse;
+import com.runiversityadmisson.bot.application.onboarding.AchievementPrivilegeService;
 import com.runiversityadmisson.bot.application.onboarding.OnboardingApiService;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SessionOnboardingController {
 
 	private final OnboardingApiService onboardingApiService;
+	private final AchievementPrivilegeService achievementPrivilegeService;
 
 	@PatchMapping("/{sessionId}/language")
 	public SessionResponse setLanguage(
@@ -72,6 +77,25 @@ public class SessionOnboardingController {
 		ensureOwner(sessionId, authenticatedUserId);
 		onboardingApiService.setInterests(sessionId, request.categoryIds());
 		return ResponseEntity.ok().build();
+	}
+
+	@PutMapping("/{sessionId}/achievements")
+	public ResponseEntity<Void> setAchievements(
+			@PathVariable UUID sessionId,
+			@AuthenticationPrincipal UUID authenticatedUserId,
+			@Valid @RequestBody SetAchievementsRequest request) {
+		ensureOwner(sessionId, authenticatedUserId);
+		achievementPrivilegeService.setAchievements(sessionId, request.achievementIds());
+		return ResponseEntity.ok().build();
+	}
+
+	@PutMapping("/{sessionId}/privilege")
+	public PrivilegeApplyResultResponse setPrivileges(
+			@PathVariable UUID sessionId,
+			@AuthenticationPrincipal UUID authenticatedUserId,
+			@Valid @RequestBody SetPrivilegesRequest request) {
+		ensureOwner(sessionId, authenticatedUserId);
+		return achievementPrivilegeService.setPrivileges(sessionId, request.categoryIds());
 	}
 
 	private void ensureOwner(UUID sessionId, UUID authenticatedUserId) {
