@@ -3,6 +3,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { LanguageCode } from "@/api/types/localization";
 import type { EgeScoreResult } from "@/api/types/session";
 import { getEgeScoreSummary } from "@/utils/egeScore";
+import type { ErrorDetails } from "@/utils/appError";
 
 interface SessionState {
   sessionId: string | null;
@@ -12,6 +13,7 @@ interface SessionState {
 
   isInitialized: boolean;
   initializationError: boolean;
+  initializationErrorDetails: ErrorDetails | null;
   isCompleteFromBot: boolean;
   egeScores: EgeScoreResult[];
 }
@@ -24,6 +26,7 @@ const initialState: SessionState = {
 
   isInitialized: false,
   initializationError: false,
+  initializationErrorDetails: null,
   isCompleteFromBot: false,
   egeScores: [],
 };
@@ -49,6 +52,7 @@ const sessionSlice = createSlice({
       state.isCompleteFromBot = action.payload.isCompleteFromBot;
       state.egeScores = action.payload.egeScores;
       state.initializationError = false;
+      state.initializationErrorDetails = null;
     },
 
     setLanguage(state, action: PayloadAction<LanguageCode>) {
@@ -59,8 +63,9 @@ const sessionSlice = createSlice({
       state.isInitialized = action.payload;
     },
 
-    initializationFailed(state) {
+    initializationFailed(state, action: PayloadAction<ErrorDetails | undefined>) {
       state.initializationError = true;
+      state.initializationErrorDetails = action.payload ?? { status: null, code: "UNKNOWN_ERROR" };
       state.isInitialized = false;
     },
 

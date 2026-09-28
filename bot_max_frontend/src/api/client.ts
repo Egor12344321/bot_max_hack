@@ -1,3 +1,5 @@
+import { AppError } from "@/utils/appError";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 let accessToken: string | null = null;
@@ -22,25 +24,34 @@ export async function request<T>(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new AppError("NETWORK_ERROR");
+  }
 
   if (!response.ok) {
     let message = "Ошибка запроса";
+    let code = "HTTP_ERROR";
 
     try {
       const error = await response.json();
 
-      if (error.message) {
+      if (typeof error?.code === "string" && error.code.trim()) {
+        code = error.code;
+      }
+      if (typeof error?.message === "string") {
         message = error.message;
       }
     } catch {
       // ничего не делаем
     }
 
-    throw new Error(message);
+    throw new AppError(code, response.status, message);
   }
 
   if (response.status === 204) {

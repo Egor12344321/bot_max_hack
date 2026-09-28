@@ -78,6 +78,41 @@ test("session exchange is shared and can be retried after a failure", async () =
   assert.equal(result.accessToken, "test-token");
 });
 
+test("ошибки API сохраняют HTTP-статус и код для экрана ошибки", async () => {
+  const client = load("src/api/client.ts");
+  const { getErrorDetails } = load("src/utils/appError.ts");
+  for (const status of [400, 401, 404, 500]) {
+    global.fetch = async () => Response.json({ code: "invalid_init_data", message: "Ошибка входа" }, { status });
+    await assert.rejects(client.request("/auth/exchange"), (error) => {
+      assert.deepEqual(getErrorDetails(error), { status, code: "invalid_init_data" });
+      return true;
+    });
+  }
+  for (const body of ["<html>Bad Gateway</html>", "null", "{}"] ) {
+    global.fetch = async () => new Response(body, { status: 502 });
+    await assert.rejects(client.request("/test"), (error) => {
+      assert.deepEqual(getErrorDetails(error), { status: 502, code: "HTTP_ERROR" });
+      return true;
+    });
+  }
+  global.fetch = async () => { throw new TypeError("Failed to fetch"); };
+  await assert.rejects(client.request("/test"), (error) => {
+    assert.deepEqual(getErrorDetails(error), { status: null, code: "NETWORK_ERROR" });
+    return true;
+  });
+  assert.deepEqual(getErrorDetails(new Error("private details")), { status: null, code: "UNKNOWN_ERROR" });
+});
+
+test("повторный запуск очищает подробности ошибки", () => {
+  const slice = load("src/store/slices/sessionSlice.ts");
+  const details = { status: 401, code: "invalid_init_data" };
+  let state = slice.default(undefined, slice.initializationFailed(details));
+  assert.deepEqual(state.initializationErrorDetails, details);
+  state = slice.default(state, slice.clearSession());
+  assert.equal(state.initializationErrorDetails, null);
+  assert.equal(state.initializationError, false);
+});
+
 test("session state exposes exam scores, incomplete state and initialization failure", () => {
   const slice = load("src/store/slices/sessionSlice.ts");
   const session = load("src/mocks/session.ts").mockSession;

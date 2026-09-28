@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { initializeSession } from "@/app/initializeSession";
 import { clearSession, initializationFailed, setInitialized, setSession } from "@/store/slices/sessionSlice";
 import { useAppDispatch } from "@/store/hooks";
+import { getErrorDetails } from "@/utils/appError";
 
 export function useAppInit() {
   const dispatch = useAppDispatch();
@@ -26,8 +27,8 @@ export function useAppInit() {
           egeScores: session.egeScores,
         }));
         dispatch(setInitialized(true));
-      } catch {
-        if (!cancelled) dispatch(initializationFailed());
+      } catch (error) {
+        if (!cancelled) dispatch(initializationFailed(getErrorDetails(error)));
       }
     }
     void initApp();

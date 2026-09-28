@@ -7,6 +7,7 @@ import { AppRouter } from "@/app/router";
 import { useAppSelector } from "@/store/hooks";
 
 import { useAppInit } from "@/hooks/useAppInit";
+import { ErrorPage } from "@/pages/ErrorPage/ErrorPage";
 
 import styles from "./App.module.css";
 
@@ -17,15 +18,20 @@ export function App() {
 
   const isInitialized = useAppSelector((state) => state.session.isInitialized);
   const initializationError = useAppSelector((state) => state.session.initializationError);
+  const errorDetails = useAppSelector((state) => state.session.initializationErrorDetails);
   const isComplete = useAppSelector((state) => state.session.isCompleteFromBot);
 
-  if (initializationError || (isInitialized && !isComplete)) {
+  if (initializationError) {
+    return <ErrorPage error={errorDetails ?? { status: null, code: "UNKNOWN_ERROR" }} onRetry={retry} />;
+  }
+
+  if (isInitialized && !isComplete) {
     return (
       <Panel mode="secondary" className={styles.app}>
         <Container>
           <div className={styles.content} role="alert">
-            <Typography.Title>{t(initializationError ? "common.initError" : "common.incompleteSession")}</Typography.Title>
-            <Typography.Body>{t(initializationError ? "common.initErrorHint" : "common.completeInBot")}</Typography.Body>
+            <Typography.Title>{t("common.incompleteSession")}</Typography.Title>
+            <Typography.Body>{t("common.completeInBot")}</Typography.Body>
             <Button onClick={retry}>{t("common.retry")}</Button>
           </div>
         </Container>
