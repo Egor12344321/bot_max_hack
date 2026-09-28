@@ -37,6 +37,10 @@ jobs:
           context: ./bot_max_frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/abiturient-frontend:latest
+          build-args: |
+            VITE_API_MODE=real
+            VITE_API_URL=/api/v1
+            VITE_MAX_MODE=real
 
       - name: Deploy
         uses: appleboy/ssh-action@v1
