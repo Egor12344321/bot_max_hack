@@ -1,17 +1,13 @@
 package com.runiversityadmisson.bot.bot.service;
 
 import com.runiversityadmisson.bot.bot.client.MaxBotClient;
-import com.runiversityadmisson.bot.bot.client.dto.NewMessageBody;
 import com.runiversityadmisson.bot.bot.session.Session;
 import com.runiversityadmisson.bot.bot.session.SessionService;
 import com.runiversityadmisson.bot.bot.session.SessionState;
-import com.runiversityadmisson.bot.web.session.ApplicantSessionService;
-import java.util.List;
+import com.runiversityadmisson.bot.web.service.UserService;
 import java.util.Locale;
 import java.util.Set;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,18 +18,17 @@ public class OnboardingService {
 
 	private final MaxBotClient maxBotClient;
 	private final SessionService sessionService;
-	private final MessageSource messageSource;
-	private final String webApp;
-	private final ApplicantSessionService applicantSessionService;
+	private final BotMessageService botMessageService;
+	private final UserService userService;
 
-	public OnboardingService(MaxBotClient maxBotClient, SessionService sessionService,
-			MessageSource messageSource, @Value("${max.bot.web-app}") String webApp,
-			ApplicantSessionService applicantSessionService) {
+	public OnboardingService(MaxBotClient maxBotClient,
+							 SessionService sessionService,
+							 BotMessageService botMessageService,
+							 UserService userService) {
 		this.maxBotClient = maxBotClient;
 		this.sessionService = sessionService;
-		this.messageSource = messageSource;
-		this.webApp = webApp;
-		this.applicantSessionService = applicantSessionService;
+		this.botMessageService = botMessageService;
+		this.userService = userService;
 	}
 
 	public void start(Long userId) {
@@ -43,14 +38,14 @@ public class OnboardingService {
 			return;
 		}
 		moveTo(session, SessionState.WAITING_FOR_LANGUAGE);
-		sendLanguageQuestion(userId);
+		botMessageService.sendLanguageQuestion(userId);
 	}
 
 	public void handleCallback(Long userId, String callbackId, String payload) {
 		Session session = sessionService.getOrCreate(userId);
 
 		if (callbackId != null) {
-			maxBotClient.answerCallback(callbackId, msg("button.accepted", session.getLanguage()));
+			maxBotClient.answerCallback(callbackId, "Принято");
 		}
 		if (payload == null || payload.isBlank()) {
 			log.warn("Callback от {} без payload", userId);
@@ -63,15 +58,13 @@ public class OnboardingService {
 			handleCitizenship(session, payload.substring(12));
 		} else if ("ege_more".equals(payload)) {
 			moveTo(session, SessionState.WAITING_FOR_EGE_SUBJECT);
-			sendSubjectQuestion(userId, session.getLanguage());
+			botMessageService.sendSubjectQuestion(userId, session.getLanguage());
 		} else if ("ege_done".equals(payload)) {
 			finishEge(session);
 		} else if (payload.startsWith("subject_")) {
 			session.setCurrentSubject(payload.substring(8));
 			moveTo(session, SessionState.WAITING_FOR_EGE_SCORE);
-			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("ege.ask.score", session.getLanguage()))
-					.build());
+			botMessageService.sendEgeScoreQuestion(userId, session.getLanguage());
 		} else {
 			log.warn("Неизвестный payload у сессии {}: {}", userId, payload);
 		}
@@ -81,25 +74,21 @@ public class OnboardingService {
 		if (isRestartCommand(text)) {
 			log.info("Пользователь {} запросил перезапуск онбординга", userId);
 			sessionService.delete(userId);
-			applicantSessionService.deleteByMaxUserId(userId);
+			userService.deleteByMaxUserId(userId);
 			start(userId);
 			return;
 		}
 		Session session = sessionService.getOrCreate(userId);
 
 		if (session.getState() != SessionState.WAITING_FOR_EGE_SCORE) {
-			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("choose.button", session.getLanguage()))
-					.build());
+			botMessageService.sendChooseButtonHint(userId, session.getLanguage());
 			return;
 		}
 
 		Integer score = parseScore(text);
 		if (score == null) {
-			log.debug("Сессия {}: не распознан балл «{}», ждём число 0..100", userId, text);
-			maxBotClient.sendMessage(userId, NewMessageBody.builder()
-					.text(msg("ege.score.invalid", session.getLanguage()))
-					.build());
+			log.debug("Сессия {}: не распознан балл «{}»", userId, text);
+			botMessageService.sendInvalidScore(userId, session.getLanguage());
 			return;
 		}
 
@@ -107,7 +96,7 @@ public class OnboardingService {
 		session.getEgeScores().put(subject, score);
 		log.debug("Сессия {}: балл {} по предмету {}", userId, score, subject);
 		moveTo(session, SessionState.WAITING_FOR_EGE_MORE);
-		sendMoreSubjectsQuestion(userId, session.getLanguage());
+		botMessageService.sendMoreSubjectsQuestion(userId, session.getLanguage());
 	}
 
 	private Integer parseScore(String text) {
@@ -133,7 +122,7 @@ public class OnboardingService {
 	private void handleLanguage(Session session, String language) {
 		session.setLanguage(language);
 		moveTo(session, SessionState.WAITING_FOR_CITIZENSHIP);
-		sendCitizenshipQuestion(session.getUserId(), language);
+		botMessageService.sendCitizenshipQuestion(session.getUserId(), language);
 	}
 
 	private void handleCitizenship(Session session, String country) {
@@ -144,18 +133,14 @@ public class OnboardingService {
 		if ("RU".equals(country) || EAEU_COUNTRIES.contains(country)) {
 			session.setTrack("domestic_equivalent");
 			moveTo(session, SessionState.WAITING_FOR_EGE_SUBJECT);
-			maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
-					.text(msg("RU".equals(country) ? "track.russia" : "track.eaeu", lang))
-					.build());
-			sendSubjectQuestion(session.getUserId(), lang);
+			botMessageService.sendTrackMessage(session.getUserId(), lang,
+					"RU".equals(country) ? "track.russia" : "track.eaeu");
+			botMessageService.sendSubjectQuestion(session.getUserId(), lang);
 		} else {
 			session.setTrack("rf_quota_or_paid");
 			moveTo(session, SessionState.READY_FOR_MINAPP);
 			completeOnboarding(session);
-			maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
-					.text(msg("track.foreigner", lang))
-					.attachment(openMiniAppButton(lang))
-					.build());
+			botMessageService.sendForeignerInfo(session.getUserId(), lang);
 		}
 	}
 
@@ -164,109 +149,23 @@ public class OnboardingService {
 		log.info("Сессия {} завершила ввод баллов: {}", session.getUserId(), session.getEgeScores().size());
 		moveTo(session, SessionState.READY_FOR_MINAPP);
 		completeOnboarding(session);
-		maxBotClient.sendMessage(session.getUserId(), NewMessageBody.builder()
-				.text(msg("ege.done", lang))
-				.attachment(openMiniAppButton(lang))
-				.build());
+		botMessageService.sendEgeDone(session.getUserId(), lang);
 	}
 
 	private void completeOnboarding(Session session) {
-		applicantSessionService.saveCompletedBotSession(session);
+		userService.syncFromBot(
+				session.getUserId(),
+				session.getLanguage(),
+				session.getCitizenship(),
+				session.getTrack(),
+				session.getEgeScores()
+		);
 		sessionService.delete(session.getUserId());
-	}
-
-	private NewMessageBody.Attachment openMiniAppButton(String lang) {
-		return NewMessageBody.Attachment.inlineKeyboard(List.of(
-				List.of(NewMessageBody.Button.openApp(
-						msg("button.open.app", lang),
-						null, webApp
-				))
-		));
-	}
-
-	private void sendLanguageQuestion(Long userId) {
-		maxBotClient.sendMessage(userId, NewMessageBody.builder()
-				.text(msg("greeting", "ru"))
-				.attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
-						List.of(
-								NewMessageBody.Button.callback(msg("language.ru", "ru"), "lang_ru"),
-								NewMessageBody.Button.callback(msg("language.kk", "kk"), "lang_kk")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("language.ky", "ky"), "lang_ky")
-						)
-				)))
-				.build());
-	}
-
-	private void sendCitizenshipQuestion(Long userId, String lang) {
-		maxBotClient.sendMessage(userId, NewMessageBody.builder()
-				.text(msg("ask.citizenship", lang))
-				.attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
-						List.of(NewMessageBody.Button.callback(msg("citizenship.RU", lang), "citizenship_RU")),
-						List.of(
-								NewMessageBody.Button.callback(msg("citizenship.BY", lang), "citizenship_BY"),
-								NewMessageBody.Button.callback(msg("citizenship.KZ", lang), "citizenship_KZ")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("citizenship.KG", lang), "citizenship_KG"),
-								NewMessageBody.Button.callback(msg("citizenship.AM", lang), "citizenship_AM")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("citizenship.OTHER", lang), "citizenship_OTHER")
-						)
-				)))
-				.build());
-	}
-
-	private void sendSubjectQuestion(Long userId, String lang) {
-		maxBotClient.sendMessage(userId, NewMessageBody.builder()
-				.text(msg("ege.ask.subject", lang))
-				.attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
-						List.of(
-								NewMessageBody.Button.callback(msg("subject.russian", lang), "subject_russian"),
-								NewMessageBody.Button.callback(msg("subject.math-profile", lang), "subject_math-profile")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("subject.informatics", lang), "subject_informatics"),
-								NewMessageBody.Button.callback(msg("subject.physics", lang), "subject_physics")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("subject.chemistry", lang), "subject_chemistry"),
-								NewMessageBody.Button.callback(msg("subject.biology", lang), "subject_biology")
-						),
-						List.of(
-								NewMessageBody.Button.callback(msg("subject.social-studies", lang), "subject_social-studies"),
-								NewMessageBody.Button.callback(msg("subject.history", lang), "subject_history")
-						)
-				)))
-				.build());
-	}
-
-	private void sendMoreSubjectsQuestion(Long userId, String lang) {
-		maxBotClient.sendMessage(userId, NewMessageBody.builder()
-				.text(msg("ege.more", lang))
-				.attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
-						List.of(
-								NewMessageBody.Button.callback(msg("button.add", lang), "ege_more"),
-								NewMessageBody.Button.callback(msg("button.done", lang), "ege_done")
-						)
-				)))
-				.build());
 	}
 
 	private void moveTo(Session session, SessionState state) {
 		log.debug("Сессия {}: состояние {} -> {}", session.getUserId(), session.getState(), state);
 		session.setState(state);
 		sessionService.save(session);
-	}
-
-	private String msg(String key, String lang) {
-		Locale locale = switch (lang == null ? "ru" : lang) {
-			case "kk" -> Locale.forLanguageTag("kk");
-			case "ky" -> Locale.forLanguageTag("ky");
-			default -> Locale.forLanguageTag("ru");
-		};
-		return messageSource.getMessage(key, null, locale);
 	}
 }
