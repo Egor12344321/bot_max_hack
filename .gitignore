@@ -62,3 +62,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+AGENTS.md
+bot_max_backend/handover.txt

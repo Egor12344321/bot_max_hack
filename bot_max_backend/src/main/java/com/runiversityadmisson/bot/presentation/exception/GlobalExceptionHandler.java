@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
     }
 
     /** Ошибки валидации DTO (@Valid) → 400 Bad Request. */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+	@ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
@@ -51,7 +51,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("validation_failed", message));
-    }
+	}
+
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException exception) {
+		return ResponseEntity
+				.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("bad_request", exception.getMessage()));
+	}
 
     /** Ресурс не найден → 404 Not Found. */
     @ExceptionHandler(ResourceNotFoundException.class)

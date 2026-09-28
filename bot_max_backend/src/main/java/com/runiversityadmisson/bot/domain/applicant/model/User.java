@@ -2,6 +2,8 @@ package com.runiversityadmisson.bot.domain.applicant.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,8 +29,15 @@ public class User {
     @Column(name = "citizenship", length = 5)
     private String citizenship;
 
-    @Column(name = "track", length = 50)
-    private String track;
+	@Column(name = "track", length = 50)
+	private String track;
+
+	@ManyToMany
+	@JoinTable(
+			name = "user_interest_categories",
+			joinColumns = @JoinColumn(name = "user_id"),
+			inverseJoinColumns = @JoinColumn(name = "category_id"))
+	private Set<InterestCategory> interests = new LinkedHashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
