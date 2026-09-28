@@ -1,6 +1,5 @@
 package com.runiversityadmisson.bot.application.catalog;
 
-import com.runiversityadmisson.bot.domain.applicant.model.Achievement;
 import com.runiversityadmisson.bot.domain.applicant.model.PrivilegeCategory;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,35 +15,24 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Справочники, которых пока нет в БД: индивидуальные достижения и льготы.
- * Тестовые данные читаются один раз при старте из classpath:catalog/*.json.
- * Когда появятся таблицы — достаточно заменить загрузку, контракт сервиса не изменится.
+ * Справочник льгот, которого пока нет в БД.
+ * Тестовые данные читаются один раз при старте из classpath:catalog/privilege-categories.json.
+ * Когда появится таблица — достаточно заменить загрузку, контракт сервиса не изменится.
  */
 @Service
 public class CatalogService {
 
-	static final String ACHIEVEMENTS_PATH = "catalog/achievements.json";
 	static final String PRIVILEGE_CATEGORIES_PATH = "catalog/privilege-categories.json";
 
-	private final Map<String, Achievement> achievements;
 	private final Map<String, PrivilegeCategory> privilegeCategories;
 
 	public CatalogService(ObjectMapper objectMapper) {
-		this.achievements = indexById(read(objectMapper, ACHIEVEMENTS_PATH, Achievement[].class), Achievement::id);
 		this.privilegeCategories = indexById(
 				read(objectMapper, PRIVILEGE_CATEGORIES_PATH, PrivilegeCategory[].class), PrivilegeCategory::id);
 	}
 
-	public List<Achievement> getAchievements() {
-		return List.copyOf(achievements.values());
-	}
-
 	public List<PrivilegeCategory> getPrivilegeCategories() {
 		return List.copyOf(privilegeCategories.values());
-	}
-
-	public boolean achievementExists(String id) {
-		return achievements.containsKey(id);
 	}
 
 	public Optional<PrivilegeCategory> findPrivilegeCategory(String id) {

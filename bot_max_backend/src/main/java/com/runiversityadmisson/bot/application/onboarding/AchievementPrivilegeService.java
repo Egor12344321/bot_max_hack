@@ -4,14 +4,18 @@ import com.runiversityadmisson.bot.application.catalog.CatalogService;
 import com.runiversityadmisson.bot.application.dto.response.AchievementResponse;
 import com.runiversityadmisson.bot.application.dto.response.PrivilegeApplyResultResponse;
 import com.runiversityadmisson.bot.application.dto.response.PrivilegeCategoryResponse;
+import com.runiversityadmisson.bot.domain.applicant.model.Achievement;
 import com.runiversityadmisson.bot.domain.applicant.model.PrivilegeCategory;
 import com.runiversityadmisson.bot.domain.applicant.model.QuotaType;
 import com.runiversityadmisson.bot.domain.applicant.model.User;
+import com.runiversityadmisson.bot.domain.applicant.ports.AchievementRepository;
 import com.runiversityadmisson.bot.domain.applicant.ports.UserRepository;
 import com.runiversityadmisson.bot.presentation.exception.BadRequestException;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,11 +29,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class AchievementPrivilegeService {
 
 	private final UserRepository userRepository;
+	private final AchievementRepository achievementRepository;
 	private final CatalogService catalogService;
+	private final AdmissionBenefitService admissionBenefitService;
 
+	@Transactional(readOnly = true)
 	public List<AchievementResponse> getAchievements() {
-		return catalogService.getAchievements().stream()
-				.map(achievement -> new AchievementResponse(achievement.id(), achievement.name(), achievement.description()))
+		return achievementRepository.findAllByOrderBySortOrderAsc().stream()
+				.map(achievement -> new AchievementResponse(achievement.getId(), achievement.getName(),
+						achievement.getDescription(), achievement.getExclusiveGroup()))
 				.toList();
 	}
 
@@ -47,14 +55,26 @@ public class AchievementPrivilegeService {
 	@Transactional
 	public void setAchievements(UUID sessionId, List<String> achievementIds) {
 		ensureNoDuplicates(achievementIds, "Достижения не должны повторяться");
-		if (!achievementIds.stream().allMatch(catalogService::achievementExists)) {
+		List<Achievement> achievements = achievementRepository.findAllById(achievementIds);
+		if (achievements.size() != achievementIds.size()) {
 			throw new BadRequestException("Указано неизвестное достижение");
+		}
+		List<String> groups = achievements.stream()
+				.map(Achievement::getExclusiveGroup)
+				.filter(Objects::nonNull)
+				.toList();
+		if (new LinkedHashSet<>(groups).size() != groups.size()) {
+			throw new BadRequestException("Из этих достижений можно выбрать только одно");
 		}
 		User user = getUser(sessionId);
 		user.getAchievementIds().clear();
 		user.getAchievementIds().addAll(achievementIds);
 	}
 
+	/**
+	 * БВИ среди категорий нет: его дают дипломы олимпиад, и только в конкретных вузах.
+	 * Если дипломы пользователя дают БВИ хотя бы на одном направлении, лучшей льготой считается БВИ.
+	 */
 	@Transactional
 	public PrivilegeApplyResultResponse setPrivileges(UUID sessionId, List<String> categoryIds) {
 		ensureNoDuplicates(categoryIds, "Льготы не должны повторяться");
@@ -66,8 +86,14 @@ public class AchievementPrivilegeService {
 		user.getPrivilegeCategoryIds().clear();
 		user.getPrivilegeCategoryIds().addAll(categoryIds);
 
-		QuotaType bestQuotaType = QuotaType.best(categories.stream().map(PrivilegeCategory::quotaType).toList());
-		return new PrivilegeApplyResultResponse(List.copyOf(categoryIds), bestQuotaType.getCode(), message(bestQuotaType));
+		List<QuotaType> quotaTypes = new ArrayList<>(categories.stream().map(PrivilegeCategory::quotaType).toList());
+		long bviPrograms = admissionBenefitService.countBviPrograms(sessionId);
+		if (bviPrograms > 0) {
+			quotaTypes.add(QuotaType.BVI);
+		}
+		QuotaType bestQuotaType = QuotaType.best(quotaTypes);
+		return new PrivilegeApplyResultResponse(List.copyOf(categoryIds), bestQuotaType.getCode(),
+				message(bestQuotaType, bviPrograms));
 	}
 
 	private static void ensureNoDuplicates(List<String> ids, String message) {
@@ -81,9 +107,10 @@ public class AchievementPrivilegeService {
 				.orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
 	}
 
-	private static String message(QuotaType quotaType) {
+	private static String message(QuotaType quotaType, long bviPrograms) {
 		return switch (quotaType) {
-			case BVI -> "Применено зачисление без вступительных испытаний (БВИ)";
+			case BVI -> "Дипломы олимпиад дают БВИ (зачисление без вступительных испытаний), направлений: "
+					+ bviPrograms + ". БВИ можно использовать только один раз";
 			case SPECIAL_QUOTA -> "Применена особая квота";
 			case SEPARATE_QUOTA -> "Применена отдельная квота";
 			case TARGET_QUOTA -> "Применена целевая квота";

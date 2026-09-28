@@ -1,12 +1,5 @@
 [
   {
-    "id": "olympiad_bvi",
-    "name": "Победитель или призёр олимпиады",
-    "quotaType": "bvi",
-    "maxQuotaPercent": null,
-    "requiredDocuments": ["Документ, подтверждающий результат олимпиады"]
-  },
-  {
     "id": "disability",
     "name": "Инвалидность I или II группы",
     "quotaType": "special_quota",

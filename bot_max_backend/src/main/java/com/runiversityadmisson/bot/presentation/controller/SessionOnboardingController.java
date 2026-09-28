@@ -5,15 +5,19 @@ import com.runiversityadmisson.bot.application.dto.request.SetCitizenshipRequest
 import com.runiversityadmisson.bot.application.dto.request.SetEgeScoresRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetInterestsRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetLanguageRequest;
+import com.runiversityadmisson.bot.application.dto.request.SetOlympiadDiplomasRequest;
 import com.runiversityadmisson.bot.application.dto.request.SetPrivilegesRequest;
 import com.runiversityadmisson.bot.application.dto.response.CitizenshipResultResponse;
 import com.runiversityadmisson.bot.application.dto.response.EgeScoresSubmissionResponse;
+import com.runiversityadmisson.bot.application.dto.response.OlympiadDiplomaResponse;
 import com.runiversityadmisson.bot.application.dto.response.PrivilegeApplyResultResponse;
 import com.runiversityadmisson.bot.application.dto.response.SessionResponse;
 import com.runiversityadmisson.bot.application.onboarding.AchievementPrivilegeService;
+import com.runiversityadmisson.bot.application.onboarding.OlympiadService;
 import com.runiversityadmisson.bot.application.onboarding.OnboardingApiService;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +37,7 @@ public class SessionOnboardingController {
 
 	private final OnboardingApiService onboardingApiService;
 	private final AchievementPrivilegeService achievementPrivilegeService;
+	private final OlympiadService olympiadService;
 
 	@PatchMapping("/{sessionId}/language")
 	public SessionResponse setLanguage(
@@ -87,6 +92,23 @@ public class SessionOnboardingController {
 		ensureOwner(sessionId, authenticatedUserId);
 		achievementPrivilegeService.setAchievements(sessionId, request.achievementIds());
 		return ResponseEntity.ok().build();
+	}
+
+	@GetMapping("/{sessionId}/olympiads")
+	public List<OlympiadDiplomaResponse> getOlympiadDiplomas(
+			@PathVariable UUID sessionId,
+			@AuthenticationPrincipal UUID authenticatedUserId) {
+		ensureOwner(sessionId, authenticatedUserId);
+		return olympiadService.getDiplomas(sessionId);
+	}
+
+	@PutMapping("/{sessionId}/olympiads")
+	public List<OlympiadDiplomaResponse> setOlympiadDiplomas(
+			@PathVariable UUID sessionId,
+			@AuthenticationPrincipal UUID authenticatedUserId,
+			@Valid @RequestBody SetOlympiadDiplomasRequest request) {
+		ensureOwner(sessionId, authenticatedUserId);
+		return olympiadService.setDiplomas(sessionId, request.diplomas());
 	}
 
 	@PutMapping("/{sessionId}/privilege")

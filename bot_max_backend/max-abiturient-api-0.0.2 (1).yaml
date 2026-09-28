@@ -31,6 +31,8 @@ tags:
     description: Выбор направлений интересов (шаг 1 из 3)
   - name: Achievements
     description: Индивидуальные достижения — ИД (шаг 2 из 3)
+  - name: Olympiads
+    description: Дипломы олимпиад (шаг 2 из 3) и что они дают в каждом вузе
   - name: Privileges
     description: Льготы и квоты при поступлении (шаг 3 из 3)
   - name: Universities
@@ -388,6 +390,112 @@ paths:
         '200':
           description: Сохранено
 
+  # ---------- OLYMPIADS (шаг 2 из 3) ----------
+  /olympiads:
+    get:
+      tags: [Olympiads]
+      summary: Каталог олимпиад (ВсОШ и перечень РСОШ) с профилями и уровнями
+      description: >
+        Уровень I–III задаётся профилю олимпиады, а не олимпиаде целиком
+        (у «Физтеха» физика I уровня, а математика II). У ВсОШ уровня нет (level = null).
+      operationId: listOlympiads
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Часть названия, без учёта регистра и разницы «е»/«ё»
+          schema:
+            type: string
+        - name: subject
+          in: query
+          required: false
+          description: Оставить только профили с этим предметом ЕГЭ (id из /subjects)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Olympiad'
+
+  /sessions/{sessionId}/olympiads:
+    get:
+      tags: [Olympiads]
+      summary: Сохранённые дипломы пользователя
+      operationId: getUserOlympiads
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OlympiadDiploma'
+    put:
+      tags: [Olympiads]
+      summary: Сохранить дипломы олимпиад (полная замена списка)
+      operationId: setUserOlympiads
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [diplomas]
+              properties:
+                diplomas:
+                  type: array
+                  description: Пустой массив [] — дипломов нет. Один профиль олимпиады — один диплом.
+                  items:
+                    $ref: '#/components/schemas/OlympiadDiplomaInput'
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OlympiadDiploma'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /sessions/{sessionId}/admission-benefits:
+    get:
+      tags: [Olympiads]
+      summary: Что дипломы и ИД дают пользователю в каждом вузе и на каждом направлении
+      description: >
+        Один и тот же диплом в разных вузах даёт разное: БВИ, 100 баллов по предмету профиля,
+        баллы за ИД или ничего. Льгота срабатывает, только если ЕГЭ по предмету профиля
+        не ниже порога вуза; иначе в note объясняется, чего не хватает.
+      operationId: getAdmissionBenefits
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: universityId
+          in: query
+          required: false
+          description: Только направления этого вуза
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdmissionBenefits'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # ---------- PRIVILEGES / QUOTAS (шаг 3 из 3) ----------
   /privilege-categories:
     get:
@@ -410,8 +518,10 @@ paths:
       tags: [ Privileges ]
       summary: Сохранить все льготные категории пользователя (multi-select)
       description: >
-        Пользователь отмечает все имеющиеся льготы. Бэкенд автоматически 
-        анализирует список и выбирает наиболее выгодную квоту/БВИ для расчёта шансов.
+        Пользователь отмечает все имеющиеся льготы. Бэкенд автоматически
+        анализирует список и выбирает наиболее выгодную квоту для расчёта шансов.
+        БВИ среди категорий нет: bestQuotaType = bvi, если дипломы олимпиад
+        (PUT /sessions/{sessionId}/olympiads) дают БВИ хотя бы на одном направлении.
       operationId: setUserPrivileges
       parameters:
         - $ref: '#/components/parameters/SessionId'
@@ -428,7 +538,7 @@ paths:
                   description: Массив ID отмеченных льгот (передавать пустой массив [], если льгот нет)
                   items:
                     type: string
-                  example: [ "olympiad_bvi_2026", "special_quota_svo" ]
+                  example: [ "svo", "target_contract" ]
       responses:
         '200':
           description: Сохранено
@@ -943,6 +1053,189 @@ components:
         description:
           type: string
           nullable: true
+        exclusiveGroup:
+          type: string
+          nullable: true
+          description: Из достижений одной группы можно выбрать только одно (медаль I или II степени)
+          example: medal
+
+    OlympiadProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          example: phystech-math-2026
+        profile:
+          type: string
+          description: Код профиля, по нему вуз сопоставляет олимпиаду с направлением
+          example: math
+        name:
+          type: string
+          example: математика
+        subjectId:
+          type: string
+          description: Предмет ЕГЭ, которым подтверждают диплом и по которому дают 100 баллов
+          example: math-profile
+        level:
+          type: integer
+          nullable: true
+          description: 1–3; у ВсОШ null
+          example: 2
+        year:
+          type: integer
+          example: 2026
+
+    Olympiad:
+      type: object
+      properties:
+        id:
+          type: string
+          example: phystech
+        name:
+          type: string
+          example: Олимпиада школьников «Физтех»
+        isVsosh:
+          type: boolean
+        listNumber:
+          type: integer
+          nullable: true
+          description: Номер в перечне олимпиад школьников
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadProfile'
+
+    OlympiadDiplomaInput:
+      type: object
+      required: [profileId, degree]
+      properties:
+        profileId:
+          type: string
+          example: phystech-math-2026
+        degree:
+          type: string
+          enum: [winner, prize]
+          description: winner — победитель, prize — призёр
+
+    OlympiadDiploma:
+      type: object
+      properties:
+        profileId:
+          type: string
+        olympiadId:
+          type: string
+        olympiadName:
+          type: string
+        profileName:
+          type: string
+        level:
+          type: integer
+          nullable: true
+        degree:
+          type: string
+          enum: [winner, prize]
+        year:
+          type: integer
+
+    OlympiadBenefitItem:
+      type: object
+      properties:
+        profileId:
+          type: string
+        olympiadName:
+          type: string
+        profileName:
+          type: string
+        level:
+          type: integer
+          nullable: true
+        degree:
+          type: string
+          enum: [winner, prize]
+        benefit:
+          type: string
+          enum: [bvi, score_100, achievement_points, none]
+          description: >
+            bvi — без вступительных испытаний, score_100 — 100 баллов по предмету профиля,
+            achievement_points — баллы за ИД
+        points:
+          type: integer
+          nullable: true
+          description: Только для achievement_points
+        note:
+          type: string
+          example: "100 баллов по предмету «Математика (профиль)». Для льготы «БВИ» нужен ЕГЭ по предмету «Математика (профиль)» не ниже 85, сейчас 80"
+
+    ProgramBenefits:
+      type: object
+      properties:
+        programId:
+          type: string
+          example: mipt-applied-math
+        programName:
+          type: string
+        benefit:
+          type: string
+          enum: [bvi, score_100, none]
+          description: Лучшая льгота на направлении
+        egeScore:
+          type: integer
+          description: Сумма ЕГЭ по предметам направления без льгот
+        egeScoreWithBenefits:
+          type: integer
+          description: Сумма ЕГЭ, где по льготе подставлено 100
+        achievementPoints:
+          type: integer
+        totalScore:
+          type: integer
+          description: egeScoreWithBenefits + achievementPoints
+        passingScorePreviousYear:
+          type: integer
+          nullable: true
+        missingSubjects:
+          type: array
+          description: Предметы направления без результата ЕГЭ
+          items:
+            type: string
+          example: ["Информатика или Физика"]
+        olympiads:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadBenefitItem'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementScoreBreakdownItem'
+
+    UniversityBenefits:
+      type: object
+      properties:
+        universityId:
+          type: string
+        universityName:
+          type: string
+        achievementPointsMax:
+          type: integer
+          example: 10
+        programs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramBenefits'
+
+    AdmissionBenefits:
+      type: object
+      properties:
+        campaignYear:
+          type: integer
+          example: 2026
+        universities:
+          type: array
+          items:
+            $ref: '#/components/schemas/UniversityBenefits'
+        bviNote:
+          type: string
+          nullable: true
+          description: Заполнен, если хотя бы на одном направлении есть БВИ
 
     PrivilegeCategory:
       type: object
@@ -971,7 +1264,7 @@ components:
           type: array
           items:
             type: string
-          example: [ "olympiad_bvi_2026", "special_quota_svo" ]
+          example: [ "svo", "target_contract" ]
         bestQuotaType:
           type: string
           enum: [ bvi, special_quota, separate_quota, target_quota, none ]

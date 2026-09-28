@@ -39,11 +39,15 @@ public class User {
 			inverseJoinColumns = @JoinColumn(name = "category_id"))
 	private Set<InterestCategory> interests = new LinkedHashSet<>();
 
-	/** ID индивидуальных достижений из справочника catalog/achievements.json. */
+	/** ID индивидуальных достижений из таблицы achievements. */
 	@ElementCollection
 	@CollectionTable(name = "user_achievements", joinColumns = @JoinColumn(name = "user_id"))
 	@Column(name = "achievement_id", length = 50)
 	private Set<String> achievementIds = new LinkedHashSet<>();
+
+	@ElementCollection
+	@CollectionTable(name = "user_olympiad_diplomas", joinColumns = @JoinColumn(name = "user_id"))
+	private Set<OlympiadDiploma> olympiadDiplomas = new LinkedHashSet<>();
 
 	/** ID льготных категорий из справочника catalog/privilege-categories.json. */
 	@ElementCollection
