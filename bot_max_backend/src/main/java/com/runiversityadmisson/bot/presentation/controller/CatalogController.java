@@ -1,9 +1,14 @@
 package com.runiversityadmisson.bot.presentation.controller;
 
+import com.runiversityadmisson.bot.application.dto.response.AchievementResponse;
 import com.runiversityadmisson.bot.application.dto.response.CitizenshipOptionResponse;
 import com.runiversityadmisson.bot.application.dto.response.InterestCategoryResponse;
 import com.runiversityadmisson.bot.application.dto.response.LanguageResponse;
+import com.runiversityadmisson.bot.application.dto.response.OlympiadResponse;
+import com.runiversityadmisson.bot.application.dto.response.PrivilegeCategoryResponse;
 import com.runiversityadmisson.bot.application.dto.response.SubjectResponse;
+import com.runiversityadmisson.bot.application.onboarding.AchievementPrivilegeService;
+import com.runiversityadmisson.bot.application.onboarding.OlympiadService;
 import com.runiversityadmisson.bot.application.onboarding.OnboardingApiService;
 import java.util.List;
 import java.util.UUID;
@@ -11,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,6 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class CatalogController {
 
 	private final OnboardingApiService onboardingApiService;
+	private final AchievementPrivilegeService achievementPrivilegeService;
+	private final OlympiadService olympiadService;
 
 	@GetMapping("/languages")
 	public List<LanguageResponse> getLanguages() {
@@ -39,5 +47,22 @@ public class CatalogController {
 	@GetMapping("/interest-categories")
 	public List<InterestCategoryResponse> getInterestCategories() {
 		return onboardingApiService.getInterestCategories();
+	}
+
+	@GetMapping("/achievements")
+	public List<AchievementResponse> getAchievements() {
+		return achievementPrivilegeService.getAchievements();
+	}
+
+	@GetMapping("/privilege-categories")
+	public List<PrivilegeCategoryResponse> getPrivilegeCategories() {
+		return achievementPrivilegeService.getPrivilegeCategories();
+	}
+
+	@GetMapping("/olympiads")
+	public List<OlympiadResponse> getOlympiads(
+			@RequestParam(required = false) String query,
+			@RequestParam(name = "subject", required = false) String subjectId) {
+		return olympiadService.getOlympiads(query, subjectId);
 	}
 }
