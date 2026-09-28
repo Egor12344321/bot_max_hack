@@ -1,0 +1,59 @@
+Структура не подходит. Используй такую:
+
+com.runiversityadmisson.bot
+├── domain
+│   └── applicant
+│       ├── model
+│       │   ├── User.java
+│       │   ├── EgeScore.java
+│       │   ├── Subject.java
+│       │   └── CitizenshipOption.java
+│       ├── ports
+│       │   ├── UserRepository.java
+│       │   ├── EgeScoreRepository.java
+│       │   └── SubjectRepository.java
+│       └── service
+│           └── UserService.java
+│
+├── application
+│   ├── session
+│   │   ├── Session.java
+│   │   ├── SessionState.java
+│   │   └── SessionService.java
+│   ├── onboarding
+│   │   ├── OnboardingService.java
+│   │   └── BotMessageService.java
+│   ├── exchange
+│   │   └── ExchangeService.java
+│   ├── catalog
+│   │   └── CatalogService.java  ← сюда справочники
+│   └── dto
+│       ├── request
+│       └── response
+│
+├── infrastructure
+│   └── external
+│       └── max
+│           ├── MaxBotClient.java
+│           └── dto
+│               └── NewMessageBody.java
+│
+└── presentation
+    ├── controller
+    │   ├── ExchangeController.java
+    │   ├── SessionController.java
+    │   ├── CatalogController.java  ← сюда справочники
+    │   └── MaxWebhookController.java
+    ├── filter
+    │   ├── JwtAuthFilter.java
+    │   └── WebhookSecretFilter.java
+    ├── security
+    │   ├── InitDataValidator.java
+    │   └── JwtService.java
+    └── exception
+        ├── GlobalExceptionHandler.java
+        ├── InvalidInitDataException.java
+        ├── InvalidJwtException.java
+        └── ResourceNotFoundException.java
+
+Перемести всё в эту структуру. Не создавай новых пакетов.
