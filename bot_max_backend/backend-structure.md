@@ -3,6 +3,22 @@
 Исходники: `src/main/java/com/runiversityadmisson/bot`.
 Сначала выбираем слой, затем предметную область.
 
+## Словарь имён
+
+Два слова использовались в двух смыслах, поэтому закреплены однозначно:
+
+| Слово | Что означает |
+| --- | --- |
+| `BotQuestionnaire` | незавершённая анкета, которую бот набирает в диалоге. Живёт в Redis до часа, стирается после онбординга |
+| `Session` | заявка абитуриента в БД. Только она адресуется в `/v1/sessions/{id}` |
+| `Questionnaire` | заполнение заявки через REST мини-аппа |
+| `StudyDirection` | федеральное направление подготовки из справочника, а не «направление» в общем смысле |
+| `Program` | конкретная образовательная программа конкретного вуза |
+
+`application/max` — код, работающий с платформой MAX: вебхуки, диалог, Redis.
+Всё остальное в `application` — код над заявкой абитуриента.
+`domain` и `presentation` платформой MAX не делятся.
+
 ## Domain — модели, доступ к данным, расчёты
 
 `domain/applicant/model` и `domain/applicant/ports` используют одинаковые группы:
@@ -10,7 +26,7 @@
 | Пакет | Модели | Репозитории |
 | --- | --- | --- |
 | `profile` | User, Language, CitizenshipOption | UserRepository, LanguageRepository, CitizenshipOptionRepository |
-| `direction` | Direction, InterestCategory | DirectionRepository, InterestCategoryRepository |
+| `direction` | StudyDirection, InterestCategory | StudyDirectionRepository, InterestCategoryRepository |
 | `exam` | EgeScore, Subject | EgeScoreRepository, SubjectRepository |
 | `university` | University, Program, ProgramSubject | ProgramRepository |
 | `benefit` | Achievement, PrivilegeCategory, QuotaType | AchievementRepository |
@@ -20,14 +36,20 @@
 
 ## Application — сценарии приложения
 
-- `direction` — каталог и выбор направлений.
+Код над заявкой абитуриента:
+
+- `direction` — каталог направлений и выбор пользователя.
 - `olympiad` — справочник олимпиад и дипломы пользователя.
-- `benefit` — достижения, льготы и персональный расчёт.
-- `onboarding` — REST-сценарии заполнения анкеты.
-- `onboarding/bot` — диалог онбординга в MAX, обработка обновлений и сообщения.
-- `session` — состояние бот-сессии и чтение сохранённой анкеты.
-- `exchange` — обмен launchParams на авторизацию.
-- `catalog` — загрузка справочников.
+- `benefit` — достижения, льготы, персональный расчёт и справочник льготных категорий.
+- `onboarding` — заполнение анкеты через REST.
+- `session` — чтение сохранённой анкеты.
+- `auth` — обмен launchParams на JWT.
+
+Код платформы MAX:
+
+- `max` — разбор и маршрутизация обновлений от вебхука.
+- `max/dialog` — состояние диалога бота: анкета, шаг, хранилище Redis.
+- `max/onboarding` — сценарий диалога и отправка вопросов.
 
 ### DTO
 
@@ -35,17 +57,17 @@
 `auth`, `profile`, `session`, `direction`, `exam`, `olympiad`, `benefit`, `common`.
 
 Запросы и ответы одного сценария находятся рядом. Суффиксы `Request`, `Input`, `Response`
-показывают назначение класса. `DirectionSelection` используется и для запроса, и для ответа.
+показывают назначение класса. `StudyDirectionSelection` используется и для запроса, и для ответа.
 DTO результатов расчёта льгот, включая OlympiadBenefitResponse, лежат в `benefit`.
 
 ## Presentation — HTTP и авторизация
 
 `presentation/controller`:
 
-- `auth` — ExchangeController;
+- `auth` — AuthTokenController;
 - `catalog` — CatalogController;
-- `session` — SessionController, SessionOnboardingController;
-- `direction` — DirectionsController;
+- `session` — SessionController (чтение заявки), SessionQuestionnaireController (заполнение);
+- `direction` — StudyDirectionsController;
 - `benefit` — AdmissionBenefitsController;
 - `webhook` — MaxWebhookController;
 - `profile`, `university`, `planning` — контроллеры-заготовки профиля, вузов и планирования.

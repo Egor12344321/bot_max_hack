@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.runiversityadmisson.bot.application.catalog.CatalogService;
 import com.runiversityadmisson.bot.application.dto.benefit.AchievementResponse;
 import com.runiversityadmisson.bot.application.dto.benefit.PrivilegeApplyResultResponse;
 import com.runiversityadmisson.bot.application.dto.benefit.PrivilegeCategoryResponse;
@@ -25,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 class AchievementPrivilegeServiceTest {
 
-	private final CatalogService catalogService = new CatalogService(JsonMapper.builder().build());
+	private final PrivilegeCatalogService catalogService = new PrivilegeCatalogService(JsonMapper.builder().build());
 	private final List<Achievement> catalog = List.of(
 			achievement("medal_gold", "medal"),
 			achievement("medal_silver", "medal"),

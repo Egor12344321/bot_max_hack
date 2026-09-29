@@ -1,6 +1,5 @@
 package com.runiversityadmisson.bot.application.benefit;
 
-import com.runiversityadmisson.bot.application.catalog.CatalogService;
 import com.runiversityadmisson.bot.application.dto.benefit.AchievementResponse;
 import com.runiversityadmisson.bot.application.dto.benefit.PrivilegeApplyResultResponse;
 import com.runiversityadmisson.bot.application.dto.benefit.PrivilegeCategoryResponse;
@@ -30,7 +29,7 @@ public class AchievementPrivilegeService {
 
 	private final UserRepository userRepository;
 	private final AchievementRepository achievementRepository;
-	private final CatalogService catalogService;
+	private final PrivilegeCatalogService catalogService;
 	private final AdmissionBenefitService admissionBenefitService;
 
 	@Transactional(readOnly = true)

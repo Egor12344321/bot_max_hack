@@ -1,6 +1,6 @@
 package com.runiversityadmisson.bot.infrastructure.config;
 
-import com.runiversityadmisson.bot.application.session.Session;
+import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaire;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -13,14 +13,14 @@ import tools.jackson.databind.ObjectMapper;
 public class RedisConfig {
 
 	@Bean
-	public RedisTemplate<String, Session> redisTemplate(
+	public RedisTemplate<String, BotQuestionnaire> redisTemplate(
 			RedisConnectionFactory connectionFactory,
 			ObjectMapper objectMapper
 	) {
-		RedisTemplate<String, Session> template = new RedisTemplate<>();
+		RedisTemplate<String, BotQuestionnaire> template = new RedisTemplate<>();
 		template.setConnectionFactory(connectionFactory);
 		template.setKeySerializer(new StringRedisSerializer());
-		template.setValueSerializer(new JacksonJsonRedisSerializer<>(objectMapper, Session.class));
+		template.setValueSerializer(new JacksonJsonRedisSerializer<>(objectMapper, BotQuestionnaire.class));
 		template.afterPropertiesSet();
 		return template;
 	}

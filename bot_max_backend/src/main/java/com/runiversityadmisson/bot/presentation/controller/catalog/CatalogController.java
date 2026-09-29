@@ -9,7 +9,7 @@ import com.runiversityadmisson.bot.application.dto.benefit.PrivilegeCategoryResp
 import com.runiversityadmisson.bot.application.dto.exam.SubjectResponse;
 import com.runiversityadmisson.bot.application.benefit.AchievementPrivilegeService;
 import com.runiversityadmisson.bot.application.olympiad.OlympiadService;
-import com.runiversityadmisson.bot.application.onboarding.OnboardingApiService;
+import com.runiversityadmisson.bot.application.onboarding.QuestionnaireService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1")
 public class CatalogController {
 
-	private final OnboardingApiService onboardingApiService;
+	private final QuestionnaireService onboardingApiService;
 	private final AchievementPrivilegeService achievementPrivilegeService;
 	private final OlympiadService olympiadService;
 
