@@ -75,6 +75,24 @@ test("planning API uses authenticated real endpoints, exact IDs and atomic versi
   }
 });
 
+test("autoplan preview posts mode, deficit and base plan without saving", async () => {
+  const api = load("src/api/planningApi.ts");
+  const calls = [];
+  global.fetch = async (url, init) => {
+    calls.push({ url: new URL(url), init });
+    return Response.json({ composition: { universities: [], bviProgramId: null }, options: [], explanations: [],
+      universityRanking: [], warnings: [], calculatedAt: "2026-09-30T00:00:00Z", nearPreviousThreshold: 5 });
+  };
+  await api.previewApplicationPlan("session", { mode: "generate", allowedDeficit: 10 });
+  assert.equal(calls[0].url.pathname, "/v1/sessions/session/application-plan/preview");
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), { mode: "generate", allowedDeficit: 10 });
+  const basePlan = { universities: [{ universityId: "u", programIds: ["p"] }], bviProgramId: null };
+  await api.previewApplicationPlan("session", { mode: "fill", basePlan });
+  assert.deepEqual(JSON.parse(calls[1].init.body), { mode: "fill", basePlan });
+  assert.equal(calls.some((call) => call.init.method === "PUT"), false);
+});
+
 test("plan enforces 5x5, direction uniqueness, campaign and a single valid BVI place", () => {
   const { emptyComposition, addProgram, removeProgram, moveItem, validateComposition } = load("src/utils/applicationPlan.ts");
   const options = Array.from({ length: 6 }, (_, u) => Array.from({ length: 6 }, (_, d) => ({

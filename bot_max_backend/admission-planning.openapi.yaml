@@ -17,13 +17,17 @@ info:
     Нельзя сравнивать разные шкалы/конкурсы; неизвестная разница = null, не ноль.
     БВИ и общий конкурс рассчитываются независимо; ИД ограничены правилами вуза.
 
-    Генерация: обойти выбранные направления в порядке пользователя и выбрать для
-    каждого лучший доступный вариант, переиспользуя уже выбранные вузы и соблюдая
-    лимиты. Затем заполнить выбранными направлениями оставшиеся места, добавляя
-    вузы по рангу до пяти. Оставшиеся места внутри вузов заполнить другими
-    направлениями с подходящими ЕГЭ по тому же рангу. Нет кандидатов — оставить
-    меньше пяти и объяснить причину. В MVP один вариант конкурса на направление
-    внутри вуза; максимум 5 различных вузов и 5 различных направлений в каждом.
+    Генерация (спецификация «Автоплан поступления 5x5» от 30.09.2026). Кандидаты — все
+    рассчитанные программы до пагинации. Допустима программа с доступным БВИ либо с
+    допуском по ЕГЭ и scoreDifference >= -allowedDeficit (0, 10, 15, 20; по умолчанию 15);
+    верхней границы нет. Программы направления ранжируются по относительному проходному
+    (проходной / максимум суммы испытаний) по убыванию, без проходного — в конце, затем
+    programId; БВИ в рейтинге не поднимает. По каждому выбранному направлению берутся
+    первые три разных вуза (места 1–3). Вузы сортируются: попаданий в топ-3 больше →
+    сумма мест меньше → первых мест больше → universityId; берутся пять, недостающие
+    добираются следующими позициями рекомендаций. Внутри вуза до пяти направлений:
+    выбранные (в порядке пользователя), смежные (общая категория интересов), прочие.
+    Неподходящими вариантами план не дополняется. БВИ автоплан не назначает.
 
     GET не меняет состав плана. Изменение ЕГЭ/дипломов обновляет расчёт, но не выбор
     и не порядок. Preview не сохраняет ничего. PUT сохраняет весь состав атомарно:
@@ -187,8 +191,8 @@ paths:
         Полная замена состава. Пустой universities очищает план. Удаление вуза удаляет
         все его позиции. Замена — новые ID на тех же местах. Перестановка массивов
         меняет приоритеты. Повторы, чужая программа, более 5 вузов/направлений — 400.
-        Ручной выбор incomplete/ineligible разрешён с предупреждениями, не как
-        подтверждённый допуск. bviProgramId должен присутствовать в плане и давать БВИ;
+        Программа без допуска (нет ЕГЭ или балл ниже минимума) и без БВИ — 400.
+        bviProgramId должен присутствовать в плане и давать БВИ;
         null снимает выбор. При изменении профиля потеря права показывается предупреждением.
         expectedVersion должен совпадать с текущей версией; иначе 409 без частичной записи.
         Успех увеличивает version на 1. Баллы всегда пересчитываются сервером.
@@ -235,12 +239,14 @@ paths:
                   required: [mode]
                   properties:
                     mode: {type: string, enum: [generate]}
+                    allowedDeficit: {$ref: '#/components/schemas/AllowedDeficit'}
                 - type: object
                   additionalProperties: false
                   required: [mode, basePlan]
                   properties:
                     mode: {type: string, enum: [fill]}
                     basePlan: {$ref: '#/components/schemas/PlanComposition'}
+                    allowedDeficit: {$ref: '#/components/schemas/AllowedDeficit'}
       responses:
         '200':
           description: Предложение и причины неполного заполнения
@@ -366,6 +372,32 @@ components:
                 uniqueItems: true
                 description: Порядок приоритета; один programId на directionId внутри вуза. Все программы принадлежат этому вузу и одной кампании.
                 items: {type: string}
+    AllowedDeficit:
+      type: integer
+      enum: [0, 10, 15, 20]
+      default: 15
+      description: Насколько итоговый балл может быть ниже прошлогоднего проходного
+    PlanUniversityRanking:
+      type: object
+      required: [universityId, universityName, hits, sumOfPlaces, firstPlaces, places, addedAsFill, retained, message]
+      properties:
+        universityId: {type: string}
+        universityName: {type: string}
+        hits: {type: integer, description: Попаданий в топ-3 по выбранным направлениям}
+        sumOfPlaces: {type: integer}
+        firstPlaces: {type: integer}
+        places:
+          type: array
+          items:
+            type: object
+            required: [directionId, directionName, place]
+            properties:
+              directionId: {type: string}
+              directionName: {type: string}
+              place: {type: integer, minimum: 1, maximum: 3}
+        addedAsFill: {type: boolean, description: Добавлен при доборе}
+        retained: {type: boolean, description: Вуз из basePlan}
+        message: {type: string}
     PlanPreview:
       type: object
       required: [composition, options, explanations, warnings, calculatedAt, nearPreviousThreshold]
@@ -379,8 +411,12 @@ components:
             required: [programId, reason, message]
             properties:
               programId: {type: string}
-              reason: {type: string, enum: [selected_direction, auto_fill, retained]}
+              reason: {type: string, enum: [selected_direction, related_direction, auto_fill, retained]}
               message: {type: string}
+        universityRanking:
+          type: array
+          description: Почему вузы в автоплане; в GET/PUT пустой
+          items: {$ref: '#/components/schemas/PlanUniversityRanking'}
         warnings: {type: array, items: {type: string}, description: 'Недостаток кандидатов, непокрытые интересы, потеря права БВИ и другие ограничения'}
         calculatedAt: {type: string, format: date-time}
         nearPreviousThreshold: {type: integer, minimum: 0, description: '|scoreDifference| <= threshold означает near_previous; выше/ниже за пределами. Настройка backend.'}

@@ -62,11 +62,40 @@ export interface ApplicationPlan {
   warnings: string[];
   calculatedAt: string;
   nearPreviousThreshold: number;
-  explanations: {
-    programId: string;
-    reason: "selected_direction" | "auto_fill" | "retained";
-    message: string;
-  }[];
+  explanations: PlanExplanation[];
+  universityRanking?: PlanUniversityRanking[];
+}
+export interface PlanExplanation {
+  programId: string;
+  reason: "selected_direction" | "related_direction" | "auto_fill" | "retained";
+  message: string;
+}
+/** Почему вуз в автоплане: места в топ-3 по направлениям и сводные показатели. */
+export interface PlanUniversityRanking {
+  universityId: string;
+  universityName: string;
+  hits: number;
+  sumOfPlaces: number;
+  firstPlaces: number;
+  places: { directionId: string; directionName: string; place: number }[];
+  addedAsFill: boolean;
+  retained: boolean;
+  message: string;
+}
+/** Допустимое отставание от прошлогоднего проходного в автоплане. */
+export type AllowedDeficit = 0 | 10 | 15 | 20;
+export type PlanPreviewRequest =
+  | { mode: "generate"; allowedDeficit?: AllowedDeficit }
+  | { mode: "fill"; basePlan: PlanComposition; allowedDeficit?: AllowedDeficit };
+/** Черновик автоплана: сервер ничего не сохраняет. */
+export interface PlanPreview {
+  composition: PlanComposition;
+  options: ProgramOption[];
+  explanations: PlanExplanation[];
+  universityRanking: PlanUniversityRanking[];
+  warnings: string[];
+  calculatedAt: string;
+  nearPreviousThreshold: number;
 }
 export interface Diploma {
   profileId: string;

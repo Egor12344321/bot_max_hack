@@ -4,11 +4,14 @@ import {
   getApplicationPlan,
   getRecommendations,
   getSelectedDirections,
+  previewApplicationPlan,
   saveApplicationPlan,
 } from "@/api/planningApi";
 import type {
+  AllowedDeficit,
   ApplicationPlan,
   PlanComposition,
+  PlanPreview,
   ProgramOption,
   StudyDirection,
 } from "@/api/types/planning";
@@ -148,6 +151,8 @@ function PlanWorkspace({
     draft.expectedVersion !== initial.version ? initial : null,
   );
   const [notice, setNotice] = useState("");
+  const [autoPlan, setAutoPlan] = useState<PlanPreview | null>(null);
+  const [deficit, setDeficit] = useState<AllowedDeficit>(15);
   const dirty =
     JSON.stringify(draft.composition) !== JSON.stringify(saved.composition);
   useEffect(() => {
@@ -205,6 +210,35 @@ function PlanWorkspace({
         setConflict(true);
         setLatest(null);
       } else setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function runAutoPlan(mode: "generate" | "fill") {
+    if (
+      mode === "generate" &&
+      draft.composition.universities.length &&
+      !window.confirm(
+        "Заменить черновик плана автоматически собранным? На сервере план изменится только после «Сохранить план».",
+      )
+    )
+      return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const preview = await previewApplicationPlan(
+        sessionId,
+        mode === "generate"
+          ? { mode, allowedDeficit: deficit }
+          : { mode, basePlan: draft.composition, allowedDeficit: deficit },
+      );
+      const options = new Map(draft.options.map((p) => [p.programId, p]));
+      preview.options.forEach((p) => options.set(p.programId, p));
+      change(preview.composition, [...options.values()]);
+      setAutoPlan(preview);
+      setNotice("Автоплан собран. Проверьте его и нажмите «Сохранить план».");
+    } catch (e) {
+      setError(e);
     } finally {
       setBusy(false);
     }
@@ -369,9 +403,57 @@ function PlanWorkspace({
             вниз задаёт приоритет. Для замены удалите позицию и добавьте другую
             из результатов.
           </p>
+          <section className={ui.card}>
+            <h2>Автоплан</h2>
+            <p className={ui.muted}>
+              Соберёт до 5 вузов и до 5 направлений в каждом по выбранным
+              направлениям и вашим баллам. Сначала идут более конкурентные
+              программы. Сам план не сохраняется.
+            </p>
+            <label className={ui.label}>
+              Допустимое отставание от прошлогоднего проходного
+              <select
+                className={ui.input}
+                value={deficit}
+                onChange={(e) =>
+                  setDeficit(Number(e.target.value) as AllowedDeficit)
+                }
+              >
+                {([0, 10, 15, 20] as AllowedDeficit[]).map((value) => (
+                  <option key={value} value={value}>
+                    {value ? `до ${value} баллов` : "без отставания"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className={ui.actions}>
+              <button
+                className={ui.button}
+                disabled={busy || conflict || !directions.length}
+                onClick={() => runAutoPlan("generate")}
+              >
+                Собрать автоматически
+              </button>
+              <button
+                className={ui.button}
+                disabled={
+                  busy || conflict || !draft.composition.universities.length
+                }
+                onClick={() => runAutoPlan("fill")}
+              >
+                Дополнить текущий
+              </button>
+            </div>
+            {autoPlan?.warnings.map((warning, i) => (
+              <p className={ui.notice} key={i}>
+                {warning}
+              </p>
+            ))}
+          </section>
           {!draft.composition.universities.length && (
             <p className={ui.notice}>
-              План пуст. Добавьте программы на вкладке «Результаты».
+              План пуст. Соберите его автоматически или добавьте программы на
+              вкладке «Результаты».
             </p>
           )}
           {saved.warnings.map((warning, i) => (
@@ -392,6 +474,17 @@ function PlanWorkspace({
                     ?.universityName ?? u.universityId}
                 </h2>
                 <p>{u.programIds.length}/5 направлений</p>
+                {autoPlan?.universityRanking.find(
+                  (item) => item.universityId === u.universityId,
+                ) && (
+                  <p className={ui.muted}>
+                    {
+                      autoPlan.universityRanking.find(
+                        (item) => item.universityId === u.universityId,
+                      )?.message
+                    }
+                  </p>
+                )}
                 <div className={ui.actions}>
                   <button
                     className={ui.button}
@@ -449,9 +542,15 @@ function PlanWorkspace({
                 </div>
                 {u.programIds.map((id, rank) => {
                   const option = draft.options.find((p) => p.programId === id);
+                  const explanation = autoPlan?.explanations.find(
+                    (item) => item.programId === id,
+                  )?.message;
                   const controls = (
                     <div className={ui.stack}>
                       <span>Приоритет направления: {rank + 1}</span>
+                      {explanation && (
+                        <span className={ui.muted}>{explanation}</span>
+                      )}
                       <div className={ui.actions}>
                         {[-1, 1].map((delta) => (
                           <button
