@@ -1,6 +1,6 @@
 import { AppError } from "@/utils/appError";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
 let accessToken: string | null = null;
 
@@ -59,5 +59,5 @@ export async function request<T>(
   }
 
   const text = await response.text();
-  return text.trim() ? JSON.parse(text) as T : undefined as T;
+  return text.trim() ? (JSON.parse(text) as T) : (undefined as T);
 }

@@ -38,6 +38,85 @@ beforeEach(() => {
   };
 });
 
+test("planning API uses authenticated real endpoints, exact IDs and atomic versioned PUT", async () => {
+  const api = load("src/api/planningApi.ts");
+  const client = load("src/api/client.ts");
+  client.setAccessToken("test-token");
+  const calls = [];
+  global.fetch = async (url, init) => {
+    calls.push({ url: new URL(url), init });
+    assert.equal(init.headers.get("Authorization"), "Bearer test-token");
+    return Response.json({ items: [], total: 0 });
+  };
+  await api.getDirections("прог инж", 20, "it&science");
+  assert.equal(calls[0].url.pathname, "/v1/directions");
+  assert.equal(calls[0].url.searchParams.get("interestCategoryId"), "it&science");
+  assert.equal(calls[0].url.searchParams.get("offset"), "20");
+  await api.getSelectedDirections("session");
+  const ids = Array.from({ length: 7 }, (_, i) => `d${i}`);
+  await api.saveSelectedDirections("session", ids);
+  assert.deepEqual(JSON.parse(calls[2].init.body), { directionIds: ids });
+  await api.saveSelectedDirections("session", []);
+  assert.deepEqual(JSON.parse(calls[3].init.body), { directionIds: [] });
+  await api.getRecommendations("session", "09.03.04&x", 40);
+  assert.equal(calls[4].url.searchParams.get("directionId"), "09.03.04&x");
+  await api.getApplicationPlan("session");
+  const composition = { universities: [{ universityId: "u", programIds: ["p2", "p1"] }], bviProgramId: "p2" };
+  await api.saveApplicationPlan("session", composition, 3);
+  assert.equal(calls[6].url.pathname, "/v1/sessions/session/application-plan");
+  assert.equal(calls[6].init.method, "PUT");
+  assert.deepEqual(JSON.parse(calls[6].init.body), { ...composition, expectedVersion: 3 });
+  await api.saveDiplomas("session", [{ profileId: "olymp-2025", degree: "prize", year: 2025, olympiadName: "Extra response field" }]);
+  assert.deepEqual(JSON.parse(calls[7].init.body), { diplomas: [{ profileId: "olymp-2025", degree: "prize" }] });
+  for (const status of [401, 409]) {
+    global.fetch = async () => Response.json({ code: "conflict", message: "Cannot save" }, { status });
+    await assert.rejects(api.saveApplicationPlan("session", composition, 3), (error) => error.status === status);
+    assert.deepEqual(composition.universities[0].programIds, ["p2", "p1"]);
+  }
+});
+
+test("plan enforces 5x5, direction uniqueness, campaign and a single valid BVI place", () => {
+  const { emptyComposition, addProgram, removeProgram, moveItem, validateComposition } = load("src/utils/applicationPlan.ts");
+  const options = Array.from({ length: 6 }, (_, u) => Array.from({ length: 6 }, (_, d) => ({
+    universityId: `u${u}`, programId: `u${u}p${d}`, direction: { id: `d${d}` }, campaignYear: 2026, bviAvailable: d === 0,
+  }))).flat();
+  let plan = emptyComposition();
+  for (const option of options.filter((p) => p.universityId !== "u5" && p.direction.id !== "d5")) plan = addProgram(plan, option, options);
+  assert.equal(plan.universities.length, 5);
+  assert.ok(plan.universities.every((u) => u.programIds.length === 5));
+  assert.throws(() => addProgram(plan, options.find((p) => p.universityId === "u5"), options), /5 вузов/);
+  assert.throws(() => addProgram(plan, options.find((p) => p.programId === "u0p5"), options), /1 до 5/);
+  let small = addProgram(emptyComposition(), options[0], options);
+  assert.equal(addProgram(small, options[0], options), small);
+  assert.throws(() => addProgram(small, { ...options[0], programId: "alternative" }, options), /этого направления/);
+  assert.throws(() => addProgram(small, { ...options[1], campaignYear: 2027 }, options), /кампании/);
+  assert.equal(validateComposition({ ...small, bviProgramId: "u0p0" }, options), null);
+  assert.match(validateComposition({ ...small, bviProgramId: "u1p0" }, options), /БВИ/);
+  small = removeProgram({ ...small, bviProgramId: "u0p0" }, "u0p0");
+  assert.deepEqual(small, emptyComposition());
+  const order = ["p1", "p2", "p3"];
+  assert.deepEqual(moveItem(order, 0, 1), ["p2", "p1", "p3"]);
+  assert.deepEqual(order, ["p1", "p2", "p3"]);
+  assert.deepEqual(moveItem(order, 0, -1), order);
+});
+
+test("plan draft survives navigation, isolates sessions and preserves the stale version for conflict detection", () => {
+  global.sessionStorage = global.localStorage;
+  const { writePlanDraft, readPlanDraft, clearPlanDraft } = load("src/utils/planDraft.ts");
+  const draft = { composition: { universities: [{ universityId: "u", programIds: ["p"] }], bviProgramId: null },
+    options: [{ universityId: "u", programId: "p", direction: { id: "d" }, campaignYear: 2026 }], expectedVersion: 2 };
+  assert.equal(writePlanDraft("one", draft), true);
+  assert.deepEqual(createLoader()("src/utils/planDraft.ts").readPlanDraft("one"), draft);
+  assert.equal(readPlanDraft("two"), null);
+  assert.equal(readPlanDraft("one").expectedVersion, 2);
+  clearPlanDraft("one");
+  assert.equal(readPlanDraft("one"), null);
+  sessionStorage.setItem("application-plan-draft:v1:one", "bad json");
+  assert.equal(readPlanDraft("one"), null);
+  sessionStorage.setItem = () => { throw new Error("Quota exceeded"); };
+  assert.equal(writePlanDraft("one", draft), false);
+});
+
 test("HTTP client accepts empty 200 and 204, parses JSON and preserves errors", async () => {
   const client = load("src/api/client.ts");
   for (const status of [200, 204]) {

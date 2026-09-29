@@ -12,7 +12,8 @@ docker compose up --build -d
 Приложение доступно по адресу http://localhost:5173.
 Контейнер собирает фронтенд и раздаёт его через nginx. Прямые переходы и
 обновление страниц `/profile`, `/universities` и других маршрутов поддерживаются.
-По умолчанию используются моки; отдельный бэкенд для этого режима не нужен.
+По умолчанию используются реальный API и реальная авторизация MAX. Нужен запущенный
+backend; приложение открывается из бота с корректным initData.
 
 Compose читает `VITE_API_MODE`, `VITE_API_URL`, `VITE_MAX_MODE` из корневого `.env`.
 Образ собирается и без `.env`, с настройками из `.env.example` по умолчанию.
@@ -31,6 +32,41 @@ docker compose down
 ```
 
 ## Исходный шаблон: React + TypeScript + Vite
+
+## Подбор направлений и план поступления
+
+Поток: `/onboarding/interests` (категория → официальные направления) →
+`/onboarding/olympiads` → `/onboarding/achievements` → `/universities`
+(результаты отдельно по направлению) → `/universities?view=plan` (план 5×5).
+Старые ссылки `/priorities` и `/strategy/report` открывают новый план.
+
+Новый сценарий всегда обращается к API с JWT, без подстановки моков:
+
+- `GET /directions?interestCategoryId=...&query=...&offset=...&limit=20`;
+- `GET/PUT /sessions/{id}/directions`, тело PUT: `{directionIds: [...]}`;
+- `GET /sessions/{id}/recommendations?directionId=...&offset=...&limit=20`;
+- `GET/PUT /sessions/{id}/application-plan`, тело PUT: `{universities, bviProgramId, expectedVersion}`;
+- существующие `GET /interest-categories`, `GET /olympiads`,
+  `GET/PUT /sessions/{id}/olympiads`, `GET /achievements`, `PUT /sessions/{id}/achievements`.
+
+Пути дополняются `VITE_API_URL`, включающим `/v1`. Направления/план используют
+контракт OpenAPI 0.2.0 из комментария к issue #2. В backend на коммите `9dc65f3`
+четыре новых группы endpoints ещё отсутствуют; frontend показывает ошибку сервера,
+а не демонстрационные данные. API олимпиад соответствует существующим Java DTO:
+год и уровень принадлежат профилю, в PUT отправляются только `profileId` и `degree`.
+
+План собирается вручную из рекомендаций. Только кнопка «Сохранить план» вызывает PUT.
+Автогенерация/preview, planning-preferences и program-options не используются.
+До пяти уникальных вузов и пяти уникальных направлений внутри каждого; БВИ только
+в одном месте. Незавершённый план хранится в sessionStorage отдельно для каждой
+сессии и восстанавливается при возврате. При 409 локальный черновик сохраняется:
+пользователь загружает серверный вариант, затем явно выбирает его либо замену
+своим черновиком с новой версией. Баллы и сравнения не вычисляются клиентом.
+На сохранении сервер должен повторно проверить актуальные условия и пересчитать баллы.
+
+Проверка: `npm test`, `npm run lint`, `npm run build`.
+
+## Исходный шаблон
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

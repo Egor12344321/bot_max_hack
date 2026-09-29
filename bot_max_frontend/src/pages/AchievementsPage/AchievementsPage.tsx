@@ -26,7 +26,9 @@ export function AchievementsPage() {
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
 
-  const [selectedIds, setSelectedIds] = useOnboardingSelection("selectedAchievementIds");
+  const [selectedIds, setSelectedIds] = useOnboardingSelection(
+    "selectedAchievementIds",
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -77,7 +79,7 @@ export function AchievementsPage() {
 
       await saveAchievements(sessionId, selectedIds);
 
-      navigate("/onboarding/privileges");
+      navigate("/universities");
     } catch {
       setError(t("onboarding.achievements.saveError"));
     } finally {
@@ -87,15 +89,17 @@ export function AchievementsPage() {
 
   return (
     <OnboardingLayout
-      step={2}
+      step={3}
       totalSteps={3}
       title={t("onboarding.achievements.title")}
       description={t("onboarding.achievements.description")}
-      buttonText={t("onboarding.achievements.continue")}
+      buttonText="Посмотреть результаты"
       buttonLoading={isSaving}
       buttonDisabled={isLoading || loadFailed}
       onButtonClick={handleContinue}
-      onBack={() => navigate("/onboarding/interests")}
+      onBack={() => {
+        if (!isSaving) navigate("/onboarding/olympiads");
+      }}
     >
       {isLoading && (
         <div className={styles.state}>
@@ -119,6 +123,7 @@ export function AchievementsPage() {
                 <button
                   key={achievement.id}
                   type="button"
+                  disabled={isSaving}
                   className={styles.row}
                   onClick={() => handleSelect(achievement.id)}
                 >

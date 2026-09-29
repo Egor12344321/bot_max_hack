@@ -11,10 +11,8 @@ import type {
 import { request } from "@/api/client";
 
 import {
-  getMockAchievements,
   getMockInterests,
   getMockPrivileges,
-  saveMockAchievements,
   saveMockInterests,
   saveMockPrivileges,
 } from "@/mocks/mockApi";
@@ -48,10 +46,6 @@ export async function saveInterests(
 }
 
 export async function getAchievements(): Promise<Achievement[]> {
-  if (isMock) {
-    return getMockAchievements();
-  }
-
   return request<Achievement[]>("/achievements");
 }
 
@@ -59,10 +53,6 @@ export async function saveAchievements(
   sessionId: string,
   achievementIds: string[],
 ): Promise<void> {
-  if (isMock) {
-    return saveMockAchievements(achievementIds);
-  }
-
   const body: SetAchievementsRequest = {
     achievementIds,
   };
