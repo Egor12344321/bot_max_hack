@@ -9,4 +9,6 @@ public interface ProgramRepository extends JpaRepository<Program, String> {
 	List<Program> findAllByOrderByUniversityIdAscIdAsc();
 
 	List<Program> findByUniversityIdOrderByIdAsc(String universityId);
+
+	List<Program> findByDirectionIdOrderByUniversityIdAscIdAsc(String directionId);
 }

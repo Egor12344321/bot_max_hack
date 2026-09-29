@@ -15,6 +15,7 @@ import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalc
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.Applicant;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.Diploma;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.DiplomaResult;
+import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.ExamResult;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.ProgramResult;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,33 @@ class AdmissionBenefitCalculatorTest {
 				rule("hse", null, "math", 3, null, OlympiadBenefit.SCORE_100, 75));
 
 		assertThat(result.benefit()).isEqualTo(OlympiadBenefit.BVI);
-		assertThat(result.diplomas().getFirst().note()).isEqualTo("Зачисление без вступительных испытаний");
+		assertThat(result.diplomas().getFirst().note()).startsWith("Зачисление без вступительных испытаний");
+	}
+
+	@Test
+	void bviAndHundredPointsWorkTogether() {
+		ProgramResult result = calculate(program,
+				applicant(Map.of("math-profile", 80, "informatics", 70, "russian", 90), diploma(mathLevel1, OlympiadDegree.WINNER)),
+				rule("hse", null, "math", 2, OlympiadDegree.WINNER, OlympiadBenefit.BVI, 75),
+				rule("hse", null, "math", 3, null, OlympiadBenefit.SCORE_100, 75));
+
+		assertThat(result.benefit()).isEqualTo(OlympiadBenefit.BVI);
+		assertThat(result.diplomas().getFirst().hundredPoints()).isTrue();
+		assertThat(result.egeScoreWithBenefits()).isEqualTo(100 + 70 + 90);
+		assertThat(result.diplomas().getFirst().note()).isEqualTo("Зачисление без вступительных испытаний. "
+				+ "В общем конкурсе — 100 баллов по предмету «Математика (профиль)»");
+		assertThat(result.exams().getFirst()).isEqualTo(new ExamResult("math-profile", "Математика (профиль)", 80, 100,
+				true, true, "100 баллов по диплому олимпиады «vysshaya-proba»"));
+	}
+
+	@Test
+	void bviWithoutHundredPointsKeepsEgeScore() {
+		ProgramResult result = calculate(program,
+				applicant(Map.of("math-profile", 80, "informatics", 70, "russian", 90), diploma(mathLevel1, OlympiadDegree.WINNER)),
+				rule("hse", null, "math", 2, OlympiadDegree.WINNER, OlympiadBenefit.BVI, 75));
+
+		assertThat(result.benefit()).isEqualTo(OlympiadBenefit.BVI);
+		assertThat(result.egeScoreWithBenefits()).isEqualTo(80 + 70 + 90);
 	}
 
 	@Test
@@ -174,6 +201,20 @@ class AdmissionBenefitCalculatorTest {
 
 		assertThat(result.egeScore()).isEqualTo(80 + 90 + 88);
 		assertThat(result.egeScoreWithBenefits()).isEqualTo(80 + 90 + 100);
+	}
+
+	@Test
+	void explainsWhichAlternativeWasCounted() {
+		Program itmo = program(university("itmo", 10, Map.of()), "itmo-software", Set.of(),
+				subject("math-profile", null), subject("informatics", 1), subject("physics", 1));
+
+		ProgramResult result = calculate(itmo, applicant(Map.of("math-profile", 80, "informatics", 88, "physics", 76)));
+
+		assertThat(result.exams()).containsExactly(
+				new ExamResult("math-profile", "Математика (профиль)", 80, 80, true, false, "Результат ЕГЭ"),
+				new ExamResult("informatics", "Информатика", 88, 88, true, false, "Результат ЕГЭ"),
+				new ExamResult("physics", "Физика", 76, 76, false, false,
+						"Не засчитан: выбран предмет «Информатика» (88 ≥ 76)"));
 	}
 
 	@Test

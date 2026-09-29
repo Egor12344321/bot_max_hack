@@ -14,9 +14,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalInt;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -53,13 +50,14 @@ public class AdmissionBenefitCalculator {
 				.filter(result -> result == OlympiadBenefit.BVI || result == OlympiadBenefit.SCORE_100)
 				.min(Comparator.naturalOrder())
 				.orElse(OlympiadBenefit.NONE);
-		Set<String> subjectsWith100 = diplomas.stream()
-				.filter(result -> result.benefit() == OlympiadBenefit.SCORE_100)
-				.map(result -> result.diploma().profile().getSubjectId())
-				.collect(Collectors.toSet());
+		// БВИ и общий конкурс независимы: диплом с БВИ может ещё и дать 100 баллов в общем конкурсе.
+		Map<String, DiplomaResult> hundredBySubject = new LinkedHashMap<>();
+		diplomas.stream()
+				.filter(DiplomaResult::hundredPoints)
+				.forEach(result -> hundredBySubject.putIfAbsent(result.diploma().profile().getSubjectId(), result));
 
-		EgeSum ege = sumEge(program, applicant.egeScores(), Set.of());
-		EgeSum egeWithBenefits = sumEge(program, applicant.egeScores(), subjectsWith100);
+		EgeSum ege = sumEge(program, applicant.egeScores(), Map.of());
+		EgeSum egeWithBenefits = sumEge(program, applicant.egeScores(), hundredBySubject);
 		List<AchievementResult> achievements = scoreAchievements(
 				program.getUniversity(), applicant.achievements(), diplomas);
 		int achievementPoints = achievements.stream()
@@ -67,7 +65,8 @@ public class AdmissionBenefitCalculator {
 				.mapToInt(AchievementResult::points)
 				.sum();
 		return new ProgramResult(program, benefit, diplomas, ege.total(), egeWithBenefits.total(),
-				egeWithBenefits.missing(), achievements, achievementPoints, egeWithBenefits.total() + achievementPoints);
+				egeWithBenefits.missing(), egeWithBenefits.exams(), achievements, achievementPoints,
+				egeWithBenefits.total() + achievementPoints);
 	}
 
 	private DiplomaResult evaluate(Diploma diploma, Program program, Map<String, Integer> egeScores,
@@ -75,7 +74,7 @@ public class AdmissionBenefitCalculator {
 		OlympiadProfile profile = diploma.profile();
 		int age = campaignYear - profile.getOlympiadYear();
 		if (age < 0 || age > DIPLOMA_VALIDITY_YEARS) {
-			return new DiplomaResult(diploma, OlympiadBenefit.NONE, null,
+			return new DiplomaResult(diploma, OlympiadBenefit.NONE, null, false,
 					"Диплом " + profile.getOlympiadYear() + " года не действует в приёмной кампании " + campaignYear + " года");
 		}
 
@@ -85,15 +84,20 @@ public class AdmissionBenefitCalculator {
 						.thenComparing(OlympiadBenefitRule::getMinEgeScore, Comparator.nullsFirst(Comparator.naturalOrder())))
 				.toList();
 		if (candidates.isEmpty()) {
-			return new DiplomaResult(diploma, OlympiadBenefit.NONE, null, "Не даёт льгот на этом направлении");
+			return new DiplomaResult(diploma, OlympiadBenefit.NONE, null, false, "Не даёт льгот на этом направлении");
 		}
 
 		Integer egeScore = egeScores.get(profile.getSubjectId());
 		String betterBenefitHint = null;
 		for (OlympiadBenefitRule rule : candidates) {
 			if (isConfirmed(rule, egeScore)) {
+				boolean hundredPoints = candidates.stream().anyMatch(candidate ->
+						candidate.getBenefit() == OlympiadBenefit.SCORE_100 && isConfirmed(candidate, egeScore));
 				String note = describe(rule, profile);
-				return new DiplomaResult(diploma, rule.getBenefit(), rule.getPoints(),
+				if (rule.getBenefit() == OlympiadBenefit.BVI && hundredPoints) {
+					note += ". В общем конкурсе — 100 баллов по предмету «" + subjectName(profile.getSubjectId()) + "»";
+				}
+				return new DiplomaResult(diploma, rule.getBenefit(), rule.getPoints(), hundredPoints,
 						betterBenefitHint == null ? note : note + ". " + betterBenefitHint);
 			}
 			if (betterBenefitHint == null) {
@@ -104,7 +108,8 @@ public class AdmissionBenefitCalculator {
 		OlympiadBenefitRule easiest = candidates.stream()
 				.min(Comparator.comparing(OlympiadBenefitRule::getMinEgeScore))
 				.orElseThrow();
-		return new DiplomaResult(diploma, OlympiadBenefit.NONE, null, confirmationHint(easiest, profile, egeScore));
+		return new DiplomaResult(diploma, OlympiadBenefit.NONE, null, false,
+				confirmationHint(easiest, profile, egeScore));
 	}
 
 	private static boolean matches(OlympiadBenefitRule rule, Program program, Diploma diploma) {
@@ -146,8 +151,11 @@ public class AdmissionBenefitCalculator {
 		return egeScore == null ? hint + ", результата пока нет" : hint + ", сейчас " + egeScore;
 	}
 
-	/** Сумма ЕГЭ по предметам направления; из взаимозаменяемых предметов берётся лучший. */
-	private EgeSum sumEge(Program program, Map<String, Integer> egeScores, Set<String> subjectsWith100) {
+	/**
+	 * Сумма ЕГЭ по предметам направления; из взаимозаменяемых предметов берётся лучший.
+	 * По каждому предмету запоминается, засчитан ли он и почему.
+	 */
+	private EgeSum sumEge(Program program, Map<String, Integer> egeScores, Map<String, DiplomaResult> hundredBySubject) {
 		Map<String, List<String>> slots = new LinkedHashMap<>();
 		for (ProgramSubject subject : program.getSubjects()) {
 			String slot = subject.getChoiceGroup() == null
@@ -158,19 +166,47 @@ public class AdmissionBenefitCalculator {
 
 		int total = 0;
 		List<String> missing = new ArrayList<>();
+		List<ExamResult> exams = new ArrayList<>();
 		for (List<String> alternatives : slots.values()) {
-			OptionalInt best = alternatives.stream()
-					.map(subjectId -> subjectsWith100.contains(subjectId) ? Integer.valueOf(100) : egeScores.get(subjectId))
-					.filter(Objects::nonNull)
-					.mapToInt(Integer::intValue)
-					.max();
-			if (best.isPresent()) {
-				total += best.getAsInt();
-			} else {
+			Map<String, Integer> counted = new LinkedHashMap<>();
+			for (String subjectId : alternatives) {
+				Integer score = hundredBySubject.containsKey(subjectId) ? Integer.valueOf(100) : egeScores.get(subjectId);
+				if (score != null) {
+					counted.put(subjectId, score);
+				}
+			}
+			String chosen = counted.entrySet().stream()
+					.max(Map.Entry.comparingByValue())
+					.map(Map.Entry::getKey)
+					.orElse(null);
+			if (chosen == null) {
 				missing.add(alternatives.stream().map(this::subjectName).collect(Collectors.joining(" или ")));
+			} else {
+				total += counted.get(chosen);
+			}
+			for (String subjectId : alternatives) {
+				exams.add(examResult(subjectId, egeScores.get(subjectId), counted.get(subjectId), chosen,
+						counted.get(chosen), hundredBySubject.get(subjectId)));
 			}
 		}
-		return new EgeSum(total, missing);
+		return new EgeSum(total, missing, exams);
+	}
+
+	private ExamResult examResult(String subjectId, Integer egeScore, Integer score, String chosen, Integer chosenScore,
+			DiplomaResult hundred) {
+		boolean fromOlympiad = hundred != null;
+		String name = subjectName(subjectId);
+		if (score == null) {
+			return new ExamResult(subjectId, name, null, null, false, false, "Нет результата ЕГЭ");
+		}
+		if (!subjectId.equals(chosen)) {
+			return new ExamResult(subjectId, name, egeScore, score, false, fromOlympiad,
+					"Не засчитан: выбран предмет «" + subjectName(chosen) + "» (" + chosenScore + " ≥ " + score + ")");
+		}
+		String note = fromOlympiad
+				? "100 баллов по диплому олимпиады «" + hundred.diploma().profile().getOlympiad().getName() + "»"
+				: "Результат ЕГЭ";
+		return new ExamResult(subjectId, name, egeScore, score, true, fromOlympiad, note);
 	}
 
 	private List<AchievementResult> scoreAchievements(University university, List<Achievement> achievements,
@@ -235,8 +271,24 @@ public class AdmissionBenefitCalculator {
 	public record Diploma(OlympiadProfile profile, OlympiadDegree degree) {
 	}
 
-	/** Что диплом даёт на направлении. points заполнен только для баллов за ИД. */
-	public record DiplomaResult(Diploma diploma, OlympiadBenefit benefit, Integer points, String note) {
+	/**
+	 * Что диплом даёт на направлении. points заполнен только для баллов за ИД.
+	 * hundredPoints — диплом даёт 100 баллов в общем конкурсе, в том числе вместе с БВИ.
+	 */
+	public record DiplomaResult(Diploma diploma, OlympiadBenefit benefit, Integer points, boolean hundredPoints,
+			String note) {
+	}
+
+	/**
+	 * Предмет ЕГЭ направления.
+	 *
+	 * @param egeScore     результат ЕГЭ; null, если его нет
+	 * @param score        балл с учётом олимпиады (100 вместо ЕГЭ); null, если его нет
+	 * @param counted      предмет вошёл в сумму (из взаимозаменяемых засчитывается один)
+	 * @param fromOlympiad вместо ЕГЭ подставлено 100 баллов по диплому
+	 */
+	public record ExamResult(String subjectId, String subjectName, Integer egeScore, Integer score, boolean counted,
+			boolean fromOlympiad, String note) {
 	}
 
 	public record AchievementResult(String achievementId, String achievementName, int points, boolean counted,
@@ -252,7 +304,8 @@ public class AdmissionBenefitCalculator {
 	 * @param egeScore         сумма ЕГЭ без льгот
 	 * @param egeScoreWithBenefits сумма ЕГЭ, где по льготам подставлено 100
 	 * @param missingSubjects  предметы направления, по которым нет результата ЕГЭ
-	 * @param totalScore       конкурсный балл: ЕГЭ с льготами + ИД
+	 * @param exams            каждый предмет направления: засчитан ли и почему
+	 * @param totalScore       конкурсный балл общего конкурса: ЕГЭ с льготами + ИД
 	 */
 	public record ProgramResult(
 			Program program,
@@ -261,11 +314,12 @@ public class AdmissionBenefitCalculator {
 			int egeScore,
 			int egeScoreWithBenefits,
 			List<String> missingSubjects,
+			List<ExamResult> exams,
 			List<AchievementResult> achievements,
 			int achievementPoints,
 			int totalScore) {
 	}
 
-	private record EgeSum(int total, List<String> missing) {
+	private record EgeSum(int total, List<String> missing, List<ExamResult> exams) {
 	}
 }

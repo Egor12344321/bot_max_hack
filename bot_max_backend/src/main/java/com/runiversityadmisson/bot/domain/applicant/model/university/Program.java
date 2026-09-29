@@ -36,11 +36,24 @@ public class Program {
 	@Column(name = "code", length = 10)
 	private String code;
 
+	/** Федеральное направление подготовки (StudyDirection.id). */
+	@Column(name = "direction_id", nullable = false, length = 20)
+	private String directionId;
+
 	@Column(name = "name", nullable = false, length = 200)
 	private String name;
 
+	/** Проходной балл на бюджет, общий конкурс. null — нет сопоставимых данных, причина в passingScoreNote. */
 	@Column(name = "passing_score_previous_year")
 	private Integer passingScorePreviousYear;
+
+	/** Год, к которому относится проходной балл. */
+	@Column(name = "passing_score_year")
+	private Integer passingScoreYear;
+
+	/** Почему проходного нет или с ним нельзя сравнивать (например, все места заняли олимпиадники). */
+	@Column(name = "passing_score_note", length = 300)
+	private String passingScoreNote;
 
 	@ElementCollection
 	@CollectionTable(name = "program_subjects", joinColumns = @JoinColumn(name = "program_id"))

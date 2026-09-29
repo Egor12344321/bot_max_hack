@@ -87,16 +87,25 @@ public class AdmissionBenefitService {
 				.count();
 	}
 
+	public int getCampaignYear() {
+		return campaignYear;
+	}
+
 	private List<ProgramResult> calculate(UUID sessionId, String universityId) {
-		User user = userRepository.findById(sessionId)
-				.orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
 		List<Program> programs = universityId == null
 				? programRepository.findAllByOrderByUniversityIdAscIdAsc()
 				: programRepository.findByUniversityIdOrderByIdAsc(universityId);
 		if (universityId != null && programs.isEmpty()) {
 			throw new ResourceNotFoundException("Вуз не найден");
 		}
+		return calculateForPrograms(sessionId, programs);
+	}
 
+	/** Персональный расчёт по переданным программам. */
+	@Transactional(readOnly = true)
+	public List<ProgramResult> calculateForPrograms(UUID sessionId, List<Program> programs) {
+		User user = userRepository.findById(sessionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
 		Map<String, Integer> egeScores = egeScoreRepository.findByUserId(sessionId).stream()
 				.collect(Collectors.toMap(EgeScore::getSubjectId, EgeScore::getScore));
 		Applicant applicant = new Applicant(egeScores, diplomas(user),

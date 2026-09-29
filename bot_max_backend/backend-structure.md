@@ -32,7 +32,7 @@
 | `benefit` | Achievement, PrivilegeCategory, QuotaType | AchievementRepository |
 | `olympiad` | Olympiad, OlympiadProfile, OlympiadDiploma, OlympiadDegree, OlympiadBenefit, OlympiadBenefitRule | OlympiadRepository, OlympiadProfileRepository, OlympiadBenefitRuleRepository |
 
-`domain/applicant/service` — UserService и AdmissionBenefitCalculator.
+`domain/applicant/service` — UserService, AdmissionBenefitCalculator и ProgramRecommendationPolicy (отбор программ для рекомендаций).
 
 ## Application — сценарии приложения
 
@@ -44,6 +44,7 @@
 - `onboarding` — заполнение анкеты через REST.
 - `session` — чтение сохранённой анкеты.
 - `auth` — обмен launchParams на JWT.
+- `planning` — рекомендации программ по выбранному направлению.
 
 Код платформы MAX:
 
@@ -54,7 +55,7 @@
 ### DTO
 
 `application/dto` сгруппирован по назначению:
-`auth`, `profile`, `session`, `direction`, `exam`, `olympiad`, `benefit`, `common`.
+`auth`, `profile`, `session`, `direction`, `exam`, `olympiad`, `benefit`, `planning`, `common`.
 
 Запросы и ответы одного сценария находятся рядом. Суффиксы `Request`, `Input`, `Response`
 показывают назначение класса. `StudyDirectionSelection` используется и для запроса, и для ответа.
@@ -70,7 +71,8 @@ DTO результатов расчёта льгот, включая OlympiadBen
 - `direction` — StudyDirectionsController;
 - `benefit` — AdmissionBenefitsController;
 - `webhook` — MaxWebhookController;
-- `profile`, `university`, `planning` — контроллеры-заготовки профиля, вузов и планирования.
+- `planning` — RecommendationsController; остальные контроллеры планирования пока заготовки;
+- `profile`, `university` — контроллеры-заготовки профиля и вузов.
 
 Общие обработчики ошибок — `presentation/exception`, фильтры — `presentation/filter`,
 настройка безопасности и JWT — `presentation/security`.
