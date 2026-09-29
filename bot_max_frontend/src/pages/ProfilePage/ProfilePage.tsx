@@ -1,184 +1,197 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 
-import { Button, Container, Typography } from "@maxhub/max-ui";
+import { Button, Container } from "@maxhub/max-ui";
 
 import { useNavigate } from "react-router-dom";
 
-import { useTranslation } from "react-i18next";
-
-import type { ProfileSummary } from "@/api/types/profile";
+import type { Profile } from "@/api/types/profile";
+import type { SavedDiploma } from "@/api/types/planning";
 
 import { getProfile } from "@/api/profileApi";
-import { getEgeScoreSummary } from "@/utils/egeScore";
-import { selectEgeScores } from "@/store/slices/sessionSlice";
 
 import { AppLayout } from "@/components/AppLayout/AppLayout";
+import { ApiError } from "@/components/Planning/ApiError";
+import ui from "@/components/Planning/Planning.module.css";
 
-import { ChanceCircle } from "@/components/ChanceCircle/ChanceCircle";
-
+import { useRemote } from "@/hooks/useRemote";
+import { getMaxUserName } from "@/lib/max/user";
 import { useAppSelector } from "@/store/hooks";
 
 import styles from "./ProfilePage.module.css";
 
-export function ProfilePage() {
-  const { t } = useTranslation();
+function diplomaLabel(diploma: SavedDiploma) {
+  const level = diploma.level === null ? "ВсОШ" : `${diploma.level} уровень`;
+  const degree = diploma.degree === "winner" ? "победитель" : "призёр";
+  return `${diploma.profileName}, ${level}, ${degree}`;
+}
 
+function ProfileContent({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
+  const name = getMaxUserName() ?? "Абитуриент";
+  const interests = profile.interests.map((item) => item.name).join(", ");
+  const { programs } = profile;
 
-  const sessionId = useAppSelector((state) => state.session.sessionId);
-
-  const [profile, setProfile] = useState<ProfileSummary | null>(null);
-  const egeScores = useAppSelector(selectEgeScores);
-  const egeScore = getEgeScoreSummary(egeScores);
-
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadProfile() {
-      if (!sessionId) {
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const data = await getProfile(sessionId);
-
-        setProfile(data);
-      } catch {
-        setError(t("profile.loadError"));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadProfile();
-  }, [sessionId, t]);
-
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className={styles.state}>
-          <Typography.Body>{t("common.loading")}</Typography.Body>
+  return (
+    <Container className={styles.page}>
+      <section className={styles.profileCard}>
+        <div className={styles.profileTop}>
+          <div className={styles.avatar}>🎓</div>
+          <div>
+            <div className={styles.name}>{name}</div>
+            <div className={styles.subtitle}>{interests || "Интересы не выбраны"}</div>
+          </div>
         </div>
-      </AppLayout>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <AppLayout>
-        <div className={styles.state}>
-          <Typography.Body>{error || t("common.error")}</Typography.Body>
+        <div className={styles.scoreRow}>
+          <div>
+            <div className={styles.scoreLabel}>Сумма баллов ЕГЭ</div>
+            <div className={styles.scoreValue}>
+              <span className={styles.score}>{profile.egeTotal}</span>
+              <span className={styles.scoreMax}>/{profile.egeScores.length * 100}</span>
+            </div>
+          </div>
         </div>
-      </AppLayout>
-    );
-  }
+      </section>
+
+      <section className={`${ui.card} ${styles.section}`}>
+        <div className={ui.row}>
+          <strong>Баллы ЕГЭ</strong>
+          <button type="button" className={ui.button} onClick={() => navigate("/profile/ege")}>
+            Изменить
+          </button>
+        </div>
+        {!profile.egeScores.length && <span className={ui.muted}>Баллы ЕГЭ пока не указаны.</span>}
+        {profile.egeScores.map((item) => (
+          <div key={item.subjectId} className={ui.row}>
+            <span>{item.subjectName}</span>
+            <span>
+              <strong>{item.score}</strong>
+              {!item.passed && <span className={ui.muted}> · ниже порога {item.minThreshold}</span>}
+            </span>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionTitle}>Подборка по выбранным направлениям</div>
+        <div className={ui.muted}>
+          Программ в подборке: {programs.total}. Сравнение с проходным баллом прошлого года, это не гарантия
+          поступления.
+        </div>
+      </section>
+
+      <div className={styles.statusRow}>
+        <div className={`${styles.statusCard} ${styles.reserve}`}>
+          <div className={styles.statusEmoji}>🟢</div>
+          <div className={styles.statusNumber}>{programs.abovePrevious}</div>
+          <div className={styles.statusName}>Запас</div>
+          <div className={styles.statusDescription}>Выше прошлогоднего проходного</div>
+        </div>
+        <div className={`${styles.statusCard} ${styles.real}`}>
+          <div className={styles.statusEmoji}>🟡</div>
+          <div className={styles.statusNumber}>{programs.nearPrevious}</div>
+          <div className={styles.statusName}>Реально</div>
+          <div className={styles.statusDescription}>Около проходного</div>
+        </div>
+        <div className={`${styles.statusCard} ${styles.risk}`}>
+          <div className={styles.statusEmoji}>🔴</div>
+          <div className={styles.statusNumber}>{programs.belowPrevious}</div>
+          <div className={styles.statusName}>Риск</div>
+          <div className={styles.statusDescription}>Ниже проходного</div>
+        </div>
+      </div>
+
+      {(programs.bvi > 0 || programs.insufficientData > 0) && (
+        <div className={`${ui.notice} ${styles.section}`}>
+          {programs.bvi > 0 && <div>С БВИ: {programs.bvi}</div>}
+          {programs.insufficientData > 0 && <div>Без данных о прошлогоднем проходном: {programs.insufficientData}</div>}
+        </div>
+      )}
+
+      <section className={styles.advice}>
+        <span className={styles.adviceIcon}>💡</span>
+        <div>
+          <div className={styles.adviceTitle}>Совет</div>
+          <div className={styles.adviceText}>{profile.advice}</div>
+        </div>
+      </section>
+
+      <section className={`${ui.card} ${styles.section}`}>
+        <strong>Направления</strong>
+        {!profile.directions.length && <span className={ui.muted}>Направления не выбраны.</span>}
+        <div className={ui.actions}>
+          {profile.directions.map((item) => (
+            <span key={item.id} className={ui.badge}>
+              {item.code} · {item.name}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {(profile.olympiads.length > 0 || profile.achievements.length > 0 || profile.privileges.length > 0) && (
+        <section className={`${ui.card} ${styles.section}`}>
+          {profile.olympiads.length > 0 && (
+            <>
+              <strong>Олимпиады</strong>
+              {profile.olympiads.map((item) => (
+                <div key={item.profileId}>
+                  <div>{item.olympiadName}</div>
+                  <div className={ui.muted}>{diplomaLabel(item)}</div>
+                </div>
+              ))}
+            </>
+          )}
+          {profile.achievements.length > 0 && (
+            <>
+              <strong>Достижения</strong>
+              <div className={ui.actions}>
+                {profile.achievements.map((item) => (
+                  <span key={item} className={ui.badge}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+          {profile.privileges.length > 0 && (
+            <>
+              <strong>Льготы</strong>
+              <div className={ui.actions}>
+                {profile.privileges.map((item) => (
+                  <span key={item} className={ui.badge}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      <Button stretched onClick={() => navigate("/universities")}>
+        Открыть подборку
+      </Button>
+    </Container>
+  );
+}
+
+export function ProfilePage() {
+  const sessionId = useAppSelector((state) => state.session.sessionId)!;
+  const loader = useCallback(() => getProfile(sessionId), [sessionId]);
+  const { data, error, retry } = useRemote(loader);
 
   return (
     <AppLayout>
-      <Container className={styles.page}>
-        <section className={styles.profileCard}>
-          <div className={styles.profileTop}>
-            <div className={styles.avatar}>🎓</div>
-
-            <div>
-              <div className={styles.name}>{profile.fullName}</div>
-
-              <div className={styles.subtitle}>
-                {t("profile.graduation", {
-                  year: profile.graduationYear,
-                })}
-
-                {" · "}
-
-                {profile.mainInterestCategory}
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.scoreRow}>
-            <div>
-              <div className={styles.scoreLabel}>{t("profile.totalScore")}</div>
-
-              <div className={styles.scoreValue}>
-                <span className={styles.score}>{egeScore.total}</span>
-
-                <span className={styles.scoreMax}>/{egeScore.max}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.chanceCard}>
-          <ChanceCircle percent={profile.admissionProbabilityPercent} />
-
-          <div>
-            <div className={styles.chanceTitle}>{t("profile.chanceTitle")}</div>
-
-            <div className={styles.chanceDescription}>
-              {t("profile.scoreDifference", {
-                count: profile.scoreDeltaVsAveragePassing,
-              })}
-            </div>
-          </div>
-        </section>
-
-        <div className={styles.statusRow}>
-          <div className={`${styles.statusCard} ${styles.reserve}`}>
-            <div className={styles.statusEmoji}>🟢</div>
-
-            <div className={styles.statusNumber}>{profile.reserveCount}</div>
-
-            <div className={styles.statusName}>{t("profile.reserve")}</div>
-
-            <div className={styles.statusDescription}>
-              {t("profile.reserveDescription")}
-            </div>
-          </div>
-
-          <div className={`${styles.statusCard} ${styles.real}`}>
-            <div className={styles.statusEmoji}>🟡</div>
-
-            <div className={styles.statusNumber}>{profile.realCount}</div>
-
-            <div className={styles.statusName}>{t("profile.real")}</div>
-
-            <div className={styles.statusDescription}>
-              {t("profile.realDescription")}
-            </div>
-          </div>
-
-          <div className={`${styles.statusCard} ${styles.risk}`}>
-            <div className={styles.statusEmoji}>🔴</div>
-
-            <div className={styles.statusNumber}>{profile.riskCount}</div>
-
-            <div className={styles.statusName}>{t("profile.risk")}</div>
-
-            <div className={styles.statusDescription}>
-              {t("profile.riskDescription")}
-            </div>
-          </div>
-        </div>
-
-        <section className={styles.advice}>
-          <span className={styles.adviceIcon}>💡</span>
-
-          <div>
-            <div className={styles.adviceTitle}>{t("profile.advice")}</div>
-
-            <div className={styles.adviceText}>{profile.advice}</div>
-          </div>
-        </section>
-
-        <Button stretched onClick={() => navigate("/priorities")}>
-          {t("profile.openStrategy")}
-        </Button>
-      </Container>
+      {data ? (
+        <ProfileContent profile={data} />
+      ) : (
+        <Container className={styles.page}>
+          {error !== undefined ? (
+            <ApiError error={error} retry={retry} />
+          ) : (
+            <div className={styles.state}>Загрузка...</div>
+          )}
+        </Container>
+      )}
     </AppLayout>
   );
 }

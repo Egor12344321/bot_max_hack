@@ -231,12 +231,25 @@ test("selected achievements drive university totals and profile counts", async (
   const priorities = await api.getMockPriorities();
   assert.deepEqual(priorities.map((item) => item.myScore), universities.map((item) => item.myScore));
   const profile = await api.getMockProfile();
-  assert.equal(profile.reserveCount + profile.realCount + profile.riskCount, universities.length);
+  const { programs } = profile;
+  assert.equal(programs.abovePrevious + programs.nearPrevious + programs.belowPrevious, universities.length);
+  assert.equal(programs.total, universities.length);
+  assert.equal(profile.achievements.length, 2);
   for (const item of universities) await api.removeMockUniversity(item.id);
   const empty = await api.getMockProfile();
-  assert.equal(empty.reserveCount + empty.realCount + empty.riskCount, 0);
-  assert.equal(empty.admissionProbabilityPercent, 0);
-  assert.equal(empty.achievementsBonus, 0);
+  assert.equal(empty.programs.total, 0);
+  assert.match(empty.advice, /подходящих программ нет/);
+});
+
+test("mock EGE scores can be edited and feed the profile", async () => {
+  const api = load("src/mocks/mockApi.ts");
+  const saved = await api.saveMockEgeScores([
+    { subjectId: "russian", score: 90 },
+    { subjectId: "informatics", score: 30 },
+  ]);
+  assert.equal(saved.allPassed, false);
+  assert.deepEqual((await api.getMockEgeScores()).scores.map((item) => item.score), [90, 30]);
+  assert.equal((await api.getMockProfile()).egeTotal, 120);
 });
 
 test("remove, re-add and reorder keep consecutive priorities without duplicates", async () => {

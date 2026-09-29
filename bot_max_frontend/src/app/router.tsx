@@ -7,6 +7,7 @@ import { AchievementsPage } from "@/pages/AchievementsPage/AchievementsPage";
 import { PrivilegesPage } from "@/pages/PrivilegesPage/PrivilegesPage";
 
 import { ProfilePage } from "@/pages/ProfilePage/ProfilePage";
+import { EgeScoresPage } from "@/pages/EgeScoresPage/EgeScoresPage";
 
 import { PlanningPage } from "@/pages/PlanningPage/PlanningPage";
 import { OlympiadsPage } from "@/pages/OlympiadsPage/OlympiadsPage";
@@ -31,6 +32,7 @@ export function AppRouter() {
         <Route path="/onboarding/privileges" element={<PrivilegesPage />} />
 
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/ege" element={<EgeScoresPage />} />
 
         <Route path="/universities" element={<PlanningPage />} />
         <Route path="/universities/search" element={<Navigate to="/universities" replace />} />

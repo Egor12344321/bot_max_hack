@@ -59,6 +59,10 @@ const sessionSlice = createSlice({
       state.language = action.payload;
     },
 
+    setEgeScores(state, action: PayloadAction<EgeScoreResult[]>) {
+      state.egeScores = action.payload;
+    },
+
     setInitialized(state, action: PayloadAction<boolean>) {
       state.isInitialized = action.payload;
     },
@@ -75,8 +79,14 @@ const sessionSlice = createSlice({
   },
 });
 
-export const { setSession, setLanguage, setInitialized, clearSession, initializationFailed } =
-  sessionSlice.actions;
+export const {
+  setSession,
+  setLanguage,
+  setEgeScores,
+  setInitialized,
+  clearSession,
+  initializationFailed,
+} = sessionSlice.actions;
 
 export default sessionSlice.reducer;
 
