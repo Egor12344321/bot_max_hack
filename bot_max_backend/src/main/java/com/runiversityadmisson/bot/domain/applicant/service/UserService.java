@@ -1,9 +1,9 @@
 package com.runiversityadmisson.bot.domain.applicant.service;
 
-import com.runiversityadmisson.bot.domain.applicant.model.EgeScore;
-import com.runiversityadmisson.bot.domain.applicant.model.User;
-import com.runiversityadmisson.bot.domain.applicant.ports.EgeScoreRepository;
-import com.runiversityadmisson.bot.domain.applicant.ports.UserRepository;
+import com.runiversityadmisson.bot.domain.applicant.model.exam.EgeScore;
+import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.EgeScoreRepository;
+import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

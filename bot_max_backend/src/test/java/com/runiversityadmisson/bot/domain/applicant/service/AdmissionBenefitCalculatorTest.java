@@ -2,15 +2,15 @@ package com.runiversityadmisson.bot.domain.applicant.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.runiversityadmisson.bot.domain.applicant.model.Achievement;
-import com.runiversityadmisson.bot.domain.applicant.model.Olympiad;
-import com.runiversityadmisson.bot.domain.applicant.model.OlympiadBenefit;
-import com.runiversityadmisson.bot.domain.applicant.model.OlympiadBenefitRule;
-import com.runiversityadmisson.bot.domain.applicant.model.OlympiadDegree;
-import com.runiversityadmisson.bot.domain.applicant.model.OlympiadProfile;
-import com.runiversityadmisson.bot.domain.applicant.model.Program;
-import com.runiversityadmisson.bot.domain.applicant.model.ProgramSubject;
-import com.runiversityadmisson.bot.domain.applicant.model.University;
+import com.runiversityadmisson.bot.domain.applicant.model.benefit.Achievement;
+import com.runiversityadmisson.bot.domain.applicant.model.olympiad.Olympiad;
+import com.runiversityadmisson.bot.domain.applicant.model.olympiad.OlympiadBenefit;
+import com.runiversityadmisson.bot.domain.applicant.model.olympiad.OlympiadBenefitRule;
+import com.runiversityadmisson.bot.domain.applicant.model.olympiad.OlympiadDegree;
+import com.runiversityadmisson.bot.domain.applicant.model.olympiad.OlympiadProfile;
+import com.runiversityadmisson.bot.domain.applicant.model.university.Program;
+import com.runiversityadmisson.bot.domain.applicant.model.university.ProgramSubject;
+import com.runiversityadmisson.bot.domain.applicant.model.university.University;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.AchievementResult;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.Applicant;
 import com.runiversityadmisson.bot.domain.applicant.service.AdmissionBenefitCalculator.Diploma;

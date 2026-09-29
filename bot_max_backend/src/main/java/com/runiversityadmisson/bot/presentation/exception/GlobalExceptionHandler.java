@@ -1,7 +1,7 @@
 package com.runiversityadmisson.bot.presentation.exception;
 
 
-import com.runiversityadmisson.bot.application.dto.response.ErrorResponse;
+import com.runiversityadmisson.bot.application.dto.common.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

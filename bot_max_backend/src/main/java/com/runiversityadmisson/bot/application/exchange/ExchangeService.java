@@ -1,8 +1,8 @@
 package com.runiversityadmisson.bot.application.exchange;
 
-import com.runiversityadmisson.bot.application.dto.response.ExchangeResponse;
-import com.runiversityadmisson.bot.domain.applicant.model.User;
-import com.runiversityadmisson.bot.domain.applicant.ports.UserRepository;
+import com.runiversityadmisson.bot.application.dto.auth.ExchangeResponse;
+import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
+import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
 import com.runiversityadmisson.bot.presentation.security.InitDataValidator;
 import com.runiversityadmisson.bot.presentation.security.JwtService;

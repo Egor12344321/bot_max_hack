@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MAX Абитуриент — API мини-аппы
-  version: 0.1.0-draft
+  version: 0.2.0-draft
   description: |
     Черновой контракт между ботом MAX, мини-аппой "Помощник абитуриента" и бэкендом.
 
@@ -11,6 +11,13 @@ info:
     3) мини-аппа — интересы → достижения (ИД) → льготы/квоты → расчёт вузов;
     4) экраны "Профиль", "Вузы", "Приоритеты", "Календарь";
     5) сохранение стратегии и отчёт, дублируемый ботом.
+
+    Подбор и редактируемый план 5×5 определены в admission-planning.openapi.yaml
+    (пути подключены ниже). Это целевой контракт, а не перечень уже реализованных API.
+    Новый UI использует recommendations и application-plan. Старые user universities,
+    directions/priorities и priorities — legacy draft; не реализовывать их как второе
+    независимое хранилище плана. Strategy/report и profile должны читать сохранённый
+    application-plan; проценты шансов по одному прошлогоднему проходному не вычисляются.
   contact:
     name: Хакатон VK MAX — Помощник абитуриента
 
@@ -52,6 +59,22 @@ security:
   - bearerAuth: []
 
 paths:
+  /directions:
+    $ref: './admission-planning.openapi.yaml#/paths/~1directions'
+  /sessions/{sessionId}/directions:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1directions'
+  /sessions/{sessionId}/planning-preferences:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1planning-preferences'
+  /sessions/{sessionId}/recommendations:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1recommendations'
+  /sessions/{sessionId}/program-options:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1program-options'
+  /sessions/{sessionId}/program-options/{programId}:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1program-options~1{programId}'
+  /sessions/{sessionId}/application-plan:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1application-plan'
+  /sessions/{sessionId}/application-plan/preview:
+    $ref: './admission-planning.openapi.yaml#/paths/~1sessions~1{sessionId}~1application-plan~1preview'
   # ---------- AUTH / HANDOFF ----------
   /auth/bot-session:
     post:
@@ -595,6 +618,8 @@ paths:
       tags: [Universities]
       summary: "Экран «Мои вузы» — подобранный список с шансами"
       operationId: listUserUniversities
+      deprecated: true
+      description: Legacy draft. Использовать recommendations и application-plan.
       parameters:
         - $ref: '#/components/parameters/SessionId'
       responses:
@@ -610,6 +635,8 @@ paths:
       tags: [Universities]
       summary: Добавить вуз вручную в подборку
       operationId: addUserUniversity
+      deprecated: true
+      description: Legacy draft. Добавление выполняется полной заменой application-plan.
       parameters:
         - $ref: '#/components/parameters/SessionId'
       requestBody:
@@ -635,6 +662,8 @@ paths:
       tags: [Universities]
       summary: "Детальная карточка вуза: разбор ИД + направления"
       operationId: getUserUniversityDetail
+      deprecated: true
+      description: Legacy draft. Использовать program-options для персонального расчёта.
       parameters:
         - $ref: '#/components/parameters/SessionId'
         - $ref: '#/components/parameters/UniversityId'
@@ -649,6 +678,8 @@ paths:
       tags: [Universities]
       summary: Убрать вуз из подборки
       operationId: removeUserUniversity
+      deprecated: true
+      description: Legacy draft. Удаление выполняется полной заменой application-plan.
       parameters:
         - $ref: '#/components/parameters/SessionId'
         - $ref: '#/components/parameters/UniversityId'
@@ -662,6 +693,8 @@ paths:
       tags: [Directions]
       summary: Расставить приоритет направлений внутри вуза
       operationId: setDirectionPriorities
+      deprecated: true
+      description: Legacy draft. Порядок programIds в application-plan задаёт приоритет.
       parameters:
         - $ref: '#/components/parameters/SessionId'
         - $ref: '#/components/parameters/UniversityId'
@@ -694,6 +727,8 @@ paths:
       tags: [Priorities]
       summary: "Экран «Стратегия приоритетов»"
       operationId: getPriorities
+      deprecated: true
+      description: Legacy draft. Читать порядок из application-plan.
       parameters:
         - $ref: '#/components/parameters/SessionId'
       responses:
@@ -709,6 +744,8 @@ paths:
       tags: [Priorities]
       summary: Сохранить новый порядок вузов
       operationId: setPriorities
+      deprecated: true
+      description: Legacy draft. Сохранять порядок через PUT application-plan.
       parameters:
         - $ref: '#/components/parameters/SessionId'
       requestBody:

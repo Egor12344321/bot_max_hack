@@ -1,13 +1,13 @@
 package com.runiversityadmisson.bot.application.session;
 
-import com.runiversityadmisson.bot.application.dto.response.EgeScoreResponse;
-import com.runiversityadmisson.bot.application.dto.response.SessionDraftResponse;
-import com.runiversityadmisson.bot.domain.applicant.model.EgeScore;
-import com.runiversityadmisson.bot.domain.applicant.model.Subject;
-import com.runiversityadmisson.bot.domain.applicant.model.User;
-import com.runiversityadmisson.bot.domain.applicant.ports.EgeScoreRepository;
-import com.runiversityadmisson.bot.domain.applicant.ports.SubjectRepository;
-import com.runiversityadmisson.bot.domain.applicant.ports.UserRepository;
+import com.runiversityadmisson.bot.application.dto.exam.EgeScoreResponse;
+import com.runiversityadmisson.bot.application.dto.session.SessionDraftResponse;
+import com.runiversityadmisson.bot.domain.applicant.model.exam.EgeScore;
+import com.runiversityadmisson.bot.domain.applicant.model.exam.Subject;
+import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.EgeScoreRepository;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.SubjectRepository;
+import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
 import java.util.List;
 import java.util.Map;
