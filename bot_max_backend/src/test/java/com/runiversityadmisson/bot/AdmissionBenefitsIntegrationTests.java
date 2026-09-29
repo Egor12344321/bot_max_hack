@@ -14,7 +14,7 @@ import com.runiversityadmisson.bot.application.dto.benefit.UniversityBenefitsRes
 import com.runiversityadmisson.bot.application.benefit.AchievementPrivilegeService;
 import com.runiversityadmisson.bot.application.benefit.AdmissionBenefitService;
 import com.runiversityadmisson.bot.application.olympiad.OlympiadService;
-import com.runiversityadmisson.bot.application.onboarding.OnboardingApiService;
+import com.runiversityadmisson.bot.application.onboarding.QuestionnaireService;
 import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
 import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
@@ -36,7 +36,7 @@ class AdmissionBenefitsIntegrationTests {
 	@Autowired
 	private UserRepository userRepository;
 	@Autowired
-	private OnboardingApiService onboardingApiService;
+	private QuestionnaireService onboardingApiService;
 	@Autowired
 	private OlympiadService olympiadService;
 	@Autowired

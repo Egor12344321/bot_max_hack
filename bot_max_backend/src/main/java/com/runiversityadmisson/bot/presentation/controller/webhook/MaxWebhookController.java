@@ -1,7 +1,7 @@
 package com.runiversityadmisson.bot.presentation.controller.webhook;
 
 
-import com.runiversityadmisson.bot.application.onboarding.bot.ProcessUpdateService;
+import com.runiversityadmisson.bot.application.max.MaxUpdateDispatcher;
 import com.runiversityadmisson.bot.infrastructure.external.max.dto.Update;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 public class MaxWebhookController {
 
-	private final ProcessUpdateService processUpdateService;
+	private final MaxUpdateDispatcher processUpdateService;
 	private final ObjectMapper objectMapper;
 
 	@PostMapping

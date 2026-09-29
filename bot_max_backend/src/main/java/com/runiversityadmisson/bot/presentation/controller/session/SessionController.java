@@ -1,7 +1,7 @@
 package com.runiversityadmisson.bot.presentation.controller.session;
 
 import com.runiversityadmisson.bot.application.dto.session.SessionDraftResponse;
-import com.runiversityadmisson.bot.application.session.SessionQueryService;
+import com.runiversityadmisson.bot.application.session.SessionProfileService;
 import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v1/sessions")
 public class SessionController {
 
-	private final SessionQueryService sessionQueryService;
+	private final SessionProfileService sessionQueryService;
 
 	@GetMapping("/{sessionId}")
 	public SessionDraftResponse getSession(
