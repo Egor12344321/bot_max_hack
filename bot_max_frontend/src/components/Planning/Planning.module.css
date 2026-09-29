@@ -141,13 +141,26 @@
   font-size: 14px;
 }
 .chevron {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--app-accent-soft);
   color: var(--app-accent);
-  font-size: 24px;
-  line-height: 1;
   flex-shrink: 0;
 }
-.programDisclosure[open] > .programSummary .chevron {
+.chevron svg {
+  display: block;
+  transition: transform 180ms ease;
+}
+.programDisclosure[open] > .programSummary .chevron svg {
   transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chevron svg {
+    transition: none;
+  }
 }
 .programDescription {
   display: grid;

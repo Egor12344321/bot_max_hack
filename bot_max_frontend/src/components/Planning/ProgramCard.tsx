@@ -43,7 +43,11 @@ export function ProgramCard({
             <span className={ui.muted}>{p.direction.code} · {p.direction.name}</span>
             <span className={ui.disclosureHint}>Условия и расчёт</span>
           </span>
-          <span className={ui.chevron} aria-hidden="true">⌄</span>
+          <span className={ui.chevron} aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" focusable="false">
+              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
         </summary>
         <div className={ui.programDescription}>
       <span className={ui.muted}>
