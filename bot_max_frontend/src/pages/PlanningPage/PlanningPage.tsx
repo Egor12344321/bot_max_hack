@@ -24,7 +24,6 @@ import {
   removeProgram,
   validateComposition,
 } from "@/utils/applicationPlan";
-import { resolveDirections } from "@/utils/directionCatalog";
 import {
   clearPlanDraft,
   planToDraft,
@@ -57,7 +56,8 @@ function RecommendationGroup({
   return (
     <section className={ui.stack}>
       <h2>
-        {direction.code} {direction.name}
+        {data?.items[0]?.direction.code ?? direction.code}{" "}
+        {data?.items[0]?.direction.name ?? direction.name}
       </h2>
       {loading && <p role="status">Подбираем варианты…</p>}
       {error !== undefined && <ApiError error={error} retry={retry} />}
@@ -122,10 +122,12 @@ function PlanWorkspace({
   sessionId,
   initial,
   directions,
+  directionsReady,
 }: {
   sessionId: string;
   initial: ApplicationPlan;
   directions: StudyDirection[];
+  directionsReady: boolean;
 }) {
   const [params, setParams] = useSearchParams();
   const showPlan = params.get("view") === "plan";
@@ -337,7 +339,7 @@ function PlanWorkspace({
             Результаты учитывают данные профиля, олимпиады и ИД. Выберите
             программы для итогового плана. Все баллы рассчитаны сервером.
           </p>
-          {!directions.length && (
+          {directionsReady && !directions.length && (
             <p className={ui.notice}>
               Вы ещё не выбрали направления.{" "}
               <Link to="/onboarding/interests">Перейти к выбору</Link>
@@ -570,29 +572,36 @@ function PlanWorkspace({
 
 export function PlanningPage() {
   const sessionId = useAppSelector((s) => s.session.sessionId)!;
-  const loader = useCallback(async () => {
-    const [initial, selection] = await Promise.all([
-      getApplicationPlan(sessionId),
-      getSelectedDirections(sessionId),
-    ]);
-    return {
-      initial,
-      directions: await resolveDirections(selection.directionIds),
-    };
-  }, [sessionId]);
-  const { data, error, retry } = useRemote(loader);
+  const [params, setParams] = useSearchParams();
+  const showPlan = params.get("view") === "plan";
+  const loadSelection = useCallback(() => getSelectedDirections(sessionId), [sessionId]);
+  const loadPlan = useCallback(() => getApplicationPlan(sessionId), [sessionId]);
+  const selection = useRemote(loadSelection);
+  const plan = useRemote(loadPlan);
+  // IDs are enough to request recommendations. Catalogue labels must never block them.
+  const directions = (selection.data?.directionIds ?? []).map((id) => ({ id, code: id, name: "" }));
+  const unavailableDraft: PlanDraft = { composition: emptyComposition(), options: [], expectedVersion: 0 };
   return (
     <AppLayout>
-      {data ? (
-        <PlanWorkspace key={sessionId} sessionId={sessionId} {...data} />
+      {selection.loading && <p className={ui.page} role="status">Загрузка выбранных направлений…</p>}
+      {selection.error !== undefined && <div className={ui.page}><ApiError error={selection.error} retry={selection.retry} /></div>}
+      {plan.data ? (
+        <PlanWorkspace key={sessionId} sessionId={sessionId} initial={plan.data} directions={directions} directionsReady={!!selection.data} />
       ) : (
         <div className={ui.page}>
-          <h1 className={ui.title}>Результаты и план поступления</h1>
-          {error !== undefined ? (
-            <ApiError error={error} retry={retry} />
-          ) : (
-            <p role="status">Загрузка…</p>
-          )}
+          <h1 className={ui.title}>{showPlan ? "Итоговый план 5 × 5" : "Результаты по направлениям"}</h1>
+          <div className={ui.actions}>
+            <button className={ui.button} aria-pressed={!showPlan} onClick={() => setParams({})}>Результаты</button>
+            <button className={ui.button} aria-pressed={showPlan} onClick={() => setParams({ view: "plan" })}>План 5×5</button>
+          </div>
+          <section className={ui.notice}>
+            <p>{plan.loading ? "План загружается. Рекомендации можно просматривать независимо." : "План временно недоступен. Рекомендации доступны, добавление в план — после его загрузки."}</p>
+            {plan.error !== undefined && <ApiError error={plan.error} retry={plan.retry} />}
+          </section>
+          {!showPlan && <>
+            {selection.data && !directions.length && <p>Вы ещё не выбрали направления.</p>}
+            {directions.map((direction) => <RecommendationGroup key={direction.id} direction={direction} sessionId={sessionId} draft={unavailableDraft} disabled onAdd={() => {}} />)}
+          </>}
           <Link to="/onboarding/interests">Вернуться к направлениям</Link>
         </div>
       )}
