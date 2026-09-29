@@ -118,7 +118,7 @@ function DirectionForm({
   return (
     <OnboardingLayout
       step={1}
-      totalSteps={3}
+      totalSteps={4}
       title="Что вам интересно?"
       description="Откройте область интересов и выберите направления обучения. Можно выбрать несколько областей и любое количество направлений."
       buttonText="К олимпиадам"
@@ -255,7 +255,7 @@ export function InterestsPage() {
   return (
     <OnboardingLayout
       step={1}
-      totalSteps={3}
+      totalSteps={4}
       title="Направления обучения"
       buttonText="Далее"
       buttonDisabled

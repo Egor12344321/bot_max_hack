@@ -77,7 +77,7 @@ export function PrivilegesPage() {
 
       await savePrivileges(sessionId, selectedIds);
 
-      navigate("/profile");
+      navigate("/universities");
     } catch {
       setError(t("onboarding.privileges.saveError"));
     } finally {
@@ -87,15 +87,15 @@ export function PrivilegesPage() {
 
   return (
     <OnboardingLayout
-      step={3}
-      totalSteps={3}
+      step={4}
+      totalSteps={4}
       title={t("onboarding.privileges.title")}
       description={t("onboarding.privileges.description")}
       buttonText={t("onboarding.privileges.calculate")}
       buttonLoading={isSaving}
       buttonDisabled={isLoading || loadFailed}
       onButtonClick={handleContinue}
-      onBack={() => navigate("/onboarding/achievements")}
+      onBack={() => { if (!isSaving) navigate("/onboarding/achievements"); }}
     >
       {isLoading && (
         <div className={styles.state}>
@@ -119,6 +119,7 @@ export function PrivilegesPage() {
                 <button
                   key={privilege.id}
                   type="button"
+                  disabled={isSaving}
                   className={styles.row}
                   onClick={() => handleSelect(privilege.id)}
                 >

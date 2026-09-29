@@ -36,7 +36,7 @@ docker compose down
 ## Подбор направлений и план поступления
 
 Поток: `/onboarding/interests` (категория → официальные направления) →
-`/onboarding/olympiads` → `/onboarding/achievements` → `/universities`
+`/onboarding/olympiads` → `/onboarding/achievements` → `/onboarding/privileges` → `/universities`
 (результаты отдельно по направлению) → `/universities?view=plan` (план 5×5).
 Старые ссылки `/priorities` и `/strategy/report` открывают новый план.
 

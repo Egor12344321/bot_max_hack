@@ -266,6 +266,7 @@ function PlanWorkspace({
         <Link to="/onboarding/interests">Направления</Link>
         <Link to="/onboarding/olympiads">Олимпиады</Link>
         <Link to="/onboarding/achievements">ИД</Link>
+        <Link to="/onboarding/privileges">Льготы</Link>
       </div>
       {dirty && (
         <p className={ui.notice}>Есть несохранённые изменения плана.</p>

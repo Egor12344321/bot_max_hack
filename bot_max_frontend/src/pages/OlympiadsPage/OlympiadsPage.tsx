@@ -63,7 +63,7 @@ function DiplomaForm({
   return (
     <OnboardingLayout
       step={2}
-      totalSteps={3}
+      totalSteps={4}
       title="Олимпиады"
       description="Укажите профиль, год диплома и результат. Если дипломов нет, переходите дальше. Право на льготы проверяется отдельно для каждой программы."
       buttonText="К индивидуальным достижениям"
@@ -129,7 +129,7 @@ export function OlympiadsPage() {
   return (
     <OnboardingLayout
       step={2}
-      totalSteps={3}
+      totalSteps={4}
       title="Олимпиады"
       buttonText="Далее"
       buttonDisabled

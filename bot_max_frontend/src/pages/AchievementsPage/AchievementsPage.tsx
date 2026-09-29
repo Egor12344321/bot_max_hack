@@ -79,7 +79,7 @@ export function AchievementsPage() {
 
       await saveAchievements(sessionId, selectedIds);
 
-      navigate("/universities");
+      navigate("/onboarding/privileges");
     } catch {
       setError(t("onboarding.achievements.saveError"));
     } finally {
@@ -90,10 +90,10 @@ export function AchievementsPage() {
   return (
     <OnboardingLayout
       step={3}
-      totalSteps={3}
+      totalSteps={4}
       title={t("onboarding.achievements.title")}
       description={t("onboarding.achievements.description")}
-      buttonText="Посмотреть результаты"
+      buttonText={t("onboarding.achievements.continue")}
       buttonLoading={isSaving}
       buttonDisabled={isLoading || loadFailed}
       onButtonClick={handleContinue}
