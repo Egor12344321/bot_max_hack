@@ -35,11 +35,17 @@ export function ProgramCard({
 }) {
   return (
     <article className={ui.card}>
-      <strong>{p.universityName}</strong>
-      <span>{p.programName}</span>
-      <span className={ui.muted}>
-        {p.direction.code} · {p.direction.name}
-      </span>
+      <details className={ui.programDisclosure}>
+        <summary className={ui.programSummary}>
+          <span className={ui.programHeading}>
+            <strong>{p.universityName}</strong>
+            <span>{p.programName}</span>
+            <span className={ui.muted}>{p.direction.code} · {p.direction.name}</span>
+            <span className={ui.disclosureHint}>Условия и расчёт</span>
+          </span>
+          <span className={ui.chevron} aria-hidden="true">⌄</span>
+        </summary>
+        <div className={ui.programDescription}>
       <span className={ui.muted}>
         {[
           p.city,
@@ -52,12 +58,6 @@ export function ProgramCard({
           .filter(Boolean)
           .join(" · ")}
       </span>
-      <div className={ui.actions}>
-        {p.dataSource === "demo" && (
-          <span className={ui.badge}>Демонстрационные данные</span>
-        )}
-        {p.bviAvailable && <span className={ui.badge}>БВИ доступно</span>}
-      </div>
       <p>{eligibility[p.eligibility]}</p>
       <div className={ui.stack}>
         <span>
@@ -105,6 +105,14 @@ export function ProgramCard({
           ))}
         </div>
       </details>
+        </div>
+      </details>
+      {(p.dataSource === "demo" || p.bviAvailable) && (
+        <div className={ui.actions}>
+          {p.dataSource === "demo" && <span className={ui.badge}>Демонстрационные данные</span>}
+          {p.bviAvailable && <span className={ui.badge}>БВИ доступно</span>}
+        </div>
+      )}
       {children}
     </article>
   );
