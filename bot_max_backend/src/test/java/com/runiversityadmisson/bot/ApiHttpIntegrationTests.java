@@ -69,7 +69,7 @@ class ApiHttpIntegrationTests {
 
 	@Test
 	void unknownPathIsNotFoundInRussian() throws Exception {
-		mockMvc.perform(get("/v1/sessions/{id}/application-plan", userId).header(HttpHeaders.AUTHORIZATION, bearer))
+		mockMvc.perform(get("/v1/sessions/{id}/strategy/report", userId).header(HttpHeaders.AUTHORIZATION, bearer))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").value("Этот раздел пока недоступен на сервере"));
 	}

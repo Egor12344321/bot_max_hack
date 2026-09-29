@@ -97,6 +97,23 @@ public class RecommendationService {
 				.toList();
 	}
 
+	/**
+	 * Персональный расчёт переданных программ без отбора и лимита: для автоплана нужен
+	 * полный набор кандидатов, а не первая страница рекомендаций. Порядок как у programs.
+	 */
+	@Transactional(readOnly = true)
+	public List<ProgramOptionResponse> evaluatePrograms(UUID sessionId, List<Program> programs) {
+		Map<String, StudyDirectionResponse> directions = directionRepository
+				.findAllById(programs.stream().map(Program::getDirectionId).distinct().toList())
+				.stream()
+				.collect(Collectors.toMap(StudyDirection::getId,
+						direction -> new StudyDirectionResponse(direction.getId(), direction.getCode(), direction.getName())));
+		Map<String, Integer> minScores = minScores();
+		return admissionBenefitService.calculateForPrograms(sessionId, programs).stream()
+				.map(result -> toResponse(evaluate(result, minScores), directions.get(result.program().getDirectionId())))
+				.toList();
+	}
+
 	private List<ProgramOptionResponse> recommend(UUID sessionId, StudyDirection direction,
 			Map<String, Integer> minScores) {
 		List<Program> programs = programRepository.findByDirectionIdOrderByUniversityIdAscIdAsc(direction.getId());

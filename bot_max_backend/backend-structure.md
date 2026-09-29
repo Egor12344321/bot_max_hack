@@ -30,9 +30,10 @@
 | `exam` | EgeScore, Subject | EgeScoreRepository, SubjectRepository |
 | `university` | University, Program, ProgramSubject | ProgramRepository |
 | `benefit` | Achievement, PrivilegeCategory, QuotaType | AchievementRepository |
+| `planning` | ApplicationPlan, ApplicationPlanItem | ApplicationPlanRepository |
 | `olympiad` | Olympiad, OlympiadProfile, OlympiadDiploma, OlympiadDegree, OlympiadBenefit, OlympiadBenefitRule | OlympiadRepository, OlympiadProfileRepository, OlympiadBenefitRuleRepository |
 
-`domain/applicant/service` — UserService, AdmissionBenefitCalculator и ProgramRecommendationPolicy (отбор программ для рекомендаций).
+`domain/applicant/service` — UserService, AdmissionBenefitCalculator, ProgramRecommendationPolicy (отбор программ для рекомендаций) и ApplicationPlanGenerator (автоплан 5×5).
 
 ## Application — сценарии приложения
 
@@ -44,7 +45,7 @@
 - `onboarding` — заполнение анкеты через REST.
 - `session` — чтение сохранённой анкеты.
 - `auth` — обмен launchParams на JWT.
-- `planning` — рекомендации программ по выбранному направлению.
+- `planning` — рекомендации программ по выбранному направлению и план 5×5 (сохранение, автоплан).
 - `profile` — экран профиля: данные пользователя и сводка по подборкам.
 
 Код платформы MAX:
@@ -72,7 +73,7 @@ DTO результатов расчёта льгот, включая OlympiadBen
 - `direction` — StudyDirectionsController;
 - `benefit` — AdmissionBenefitsController;
 - `webhook` — MaxWebhookController;
-- `planning` — RecommendationsController; остальные контроллеры планирования пока заготовки;
+- `planning` — RecommendationsController, ApplicationPlanController; остальные контроллеры планирования пока заготовки;
 - `profile` — ProfileController;
 - `university` — контроллер-заготовка вузов.
 

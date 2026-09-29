@@ -67,6 +67,14 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("bad_request", exception.getMessage()));
 	}
 
+    /** Данные изменились с момента загрузки (версия плана) → 409 Conflict. */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException exception) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("version_conflict", exception.getMessage()));
+    }
+
     /** Ресурс не найден → 404 Not Found. */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
