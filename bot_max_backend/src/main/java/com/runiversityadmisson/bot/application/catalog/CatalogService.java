@@ -1,6 +1,6 @@
 package com.runiversityadmisson.bot.application.catalog;
 
-import com.runiversityadmisson.bot.domain.applicant.model.PrivilegeCategory;
+import com.runiversityadmisson.bot.domain.applicant.model.benefit.PrivilegeCategory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;

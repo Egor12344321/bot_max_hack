@@ -1,0 +1,388 @@
+openapi: 3.0.3
+info:
+  title: Admission planning — направления, подборка и план 5×5
+  version: 0.2.0-draft
+  description: |
+    Целевой контракт. Все операции требуют JWT; sessionId = principal UUID,
+    чужая/несуществующая сессия возвращает 404. Неизвестный ID — 404,
+    некорректное тело/фильтр/несовместимые связи — 400, конфликт версий — 409.
+    Direction — официальное направление; programId — конкретный вариант конкурса
+    (вуз, кампус, направление, форма обучения, финансирование, тип конкурса, год).
+    Все баллы и происхождение рекомендаций вычисляет сервер, клиент передаёт только ID.
+
+    Ранжирование: доступное БВИ первым; затем eligible с известной разницей
+    totalScore - passingScorePreviousYear по убыванию; затем eligible без исторических
+    данных. При равенстве — totalScore DESC, universityId ASC, programId ASC.
+    incomplete/ineligible без доступного БВИ видны в ручном поиске, но не участвуют в автозаполнении.
+    Нельзя сравнивать разные шкалы/конкурсы; неизвестная разница = null, не ноль.
+    БВИ и общий конкурс рассчитываются независимо; ИД ограничены правилами вуза.
+
+    Генерация: обойти выбранные направления в порядке пользователя и выбрать для
+    каждого лучший доступный вариант, переиспользуя уже выбранные вузы и соблюдая
+    лимиты. Затем заполнить выбранными направлениями оставшиеся места, добавляя
+    вузы по рангу до пяти. Оставшиеся места внутри вузов заполнить другими
+    направлениями с подходящими ЕГЭ по тому же рангу. Нет кандидатов — оставить
+    меньше пяти и объяснить причину. В MVP один вариант конкурса на направление
+    внутри вуза; максимум 5 различных вузов и 5 различных направлений в каждом.
+
+    GET не меняет состав плана. Изменение ЕГЭ/дипломов обновляет расчёт, но не выбор
+    и не порядок. Preview не сохраняет ничего. PUT сохраняет весь состав атомарно:
+    добавление, удаление, замена вузов/направлений и изменение обоих приоритетов.
+    Отдельные CRUD-endpoints для каждой строки не нужны. Порядок массивов = приоритет.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /directions:
+    get:
+      operationId: searchDirections
+      summary: Найти направления по коду, названию или категории интересов
+      parameters:
+        - {name: query, in: query, schema: {type: string}}
+        - name: interestCategoryId
+          in: query
+          description: ID из GET /interest-categories (например, it). Фильтр применяется совместно с query. Неизвестный ID — 400. Без фильтра возвращается общий каталог.
+          schema: {type: string}
+          example: it
+        - {$ref: '#/components/parameters/Offset'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200':
+          description: Стабильный порядок code ASC, id ASC
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Direction'}}
+                  total: {type: integer, minimum: 0}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/directions:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      operationId: getSelectedDirections
+      summary: Прочитать выбранные направления в порядке предпочтения
+      responses:
+        '200':
+          description: Пустой список для нового пользователя
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectionSelection'}
+        default: {$ref: '#/components/responses/Error'}
+    put:
+      operationId: replaceSelectedDirections
+      summary: Добавить, удалить, заменить или переставить выбранные направления
+      description: Полная замена. Пустой список очищает выбор; лимит 5 относится к плану, не к интересам. Сохранённый план не меняется.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DirectionSelection'}
+      responses:
+        '200':
+          description: Сохранённый выбор
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DirectionSelection'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/planning-preferences:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      operationId: getPlanningPreferences
+      summary: Получить фильтры подбора
+      responses:
+        '200':
+          description: По умолчанию города любые, бюджет, очная форма, текущая кампания
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Preferences'}
+        default: {$ref: '#/components/responses/Error'}
+    put:
+      operationId: replacePlanningPreferences
+      summary: Сохранить фильтры без изменения состава плана
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Preferences'}
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Preferences'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/recommendations:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      operationId: getDirectionRecommendations
+      summary: Программы выбранного направления во всех вузах с персональным расчётом
+      description: UI вызывает для каждого выбранного направления; применяются сохранённые фильтры. Невыбранный directionId — 400. Сортировка по правилам ранжирования.
+      parameters:
+        - {name: directionId, in: query, required: true, schema: {type: string}}
+        - {$ref: '#/components/parameters/Offset'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/Options'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/program-options:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      operationId: searchProgramOptions
+      summary: Ручной поиск кандидатов для добавления или замены в плане
+      description: Поиск по всем направлениям, не только выбранным. Применяются сохранённые фильтры; eligibleOnly=true включает eligible или доступное БВИ. eligibleOnly=false добавляет остальные incomplete/ineligible в конец выдачи.
+      parameters:
+        - {name: query, in: query, schema: {type: string}, description: 'Название вуза или программы, код направления'}
+        - {name: universityId, in: query, schema: {type: string}}
+        - {name: directionId, in: query, schema: {type: string}}
+        - {name: eligibleOnly, in: query, schema: {type: boolean, default: true}}
+        - {$ref: '#/components/parameters/Offset'}
+        - {$ref: '#/components/parameters/Limit'}
+      responses:
+        '200': {$ref: '#/components/responses/Options'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/program-options/{programId}:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+      - {name: programId, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getProgramOption
+      summary: Полный персональный расчёт программы независимо от фильтров поиска
+      responses:
+        '200':
+          description: Расчёт на актуальных данных
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ProgramOption'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/application-plan:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      operationId: getApplicationPlan
+      summary: Восстановить сохранённый список и пересчитать баллы без изменения состава
+      responses:
+        '200':
+          description: Для нового пользователя version=0, universities=[], bviProgramId=null
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Plan'}
+        default: {$ref: '#/components/responses/Error'}
+    put:
+      operationId: saveApplicationPlan
+      summary: Атомарно сохранить любые изменения списка и приоритетов
+      description: |
+        Полная замена состава. Пустой universities очищает план. Удаление вуза удаляет
+        все его позиции. Замена — новые ID на тех же местах. Перестановка массивов
+        меняет приоритеты. Повторы, чужая программа, более 5 вузов/направлений — 400.
+        Ручной выбор incomplete/ineligible разрешён с предупреждениями, не как
+        подтверждённый допуск. bviProgramId должен присутствовать в плане и давать БВИ;
+        null снимает выбор. При изменении профиля потеря права показывается предупреждением.
+        expectedVersion должен совпадать с текущей версией; иначе 409 без частичной записи.
+        Успех увеличивает version на 1. Баллы всегда пересчитываются сервером.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/PlanComposition'}
+                - type: object
+                  required: [expectedVersion]
+                  properties:
+                    expectedVersion: {type: integer, minimum: 0}
+      responses:
+        '200':
+          description: План сохранён
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Plan'}
+        '409': {$ref: '#/components/responses/Error'}
+        default: {$ref: '#/components/responses/Error'}
+  /sessions/{sessionId}/application-plan/preview:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    post:
+      operationId: previewApplicationPlan
+      summary: Сгенерировать новый план или дополнить текущий черновик, не сохраняя
+      description: |
+        generate строит план с нуля по выбранным направлениям (пустой выбор — 400).
+        fill сохраняет все ID и их относительный порядок из basePlan, заполняет места
+        внутри существующих вузов и затем добавляет вузы до лимита. Для fill basePlan
+        обязателен, для generate запрещён. В fill также передать пустой basePlan для
+        подбора только по ЕГЭ при пустом выборе направлений. Результат — черновик;
+        для сохранения передать composition в PUT с известной версией сохранённого плана.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [mode]
+                  properties:
+                    mode: {type: string, enum: [generate]}
+                - type: object
+                  additionalProperties: false
+                  required: [mode, basePlan]
+                  properties:
+                    mode: {type: string, enum: [fill]}
+                    basePlan: {$ref: '#/components/schemas/PlanComposition'}
+      responses:
+        '200':
+          description: Предложение и причины неполного заполнения
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PlanPreview'}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    SessionId: {name: sessionId, in: path, required: true, schema: {type: string, format: uuid}}
+    Offset: {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+    Limit: {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+  responses:
+    Error:
+      description: '400 validation_failed; 401 unauthorized; 404 not_found; 409 version_conflict'
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message]
+            properties:
+              code: {type: string}
+              message: {type: string}
+    Options:
+      description: Персональные варианты с общим количеством до пагинации
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [items, total]
+            properties:
+              items: {type: array, items: {$ref: '#/components/schemas/ProgramOption'}}
+              total: {type: integer, minimum: 0}
+  schemas:
+    Direction:
+      type: object
+      required: [id, code, name]
+      properties:
+        id: {type: string}
+        code: {type: string, example: '09.03.04'}
+        name: {type: string, example: Программная инженерия}
+    DirectionSelection:
+      type: object
+      required: [directionIds]
+      properties:
+        directionIds: {type: array, uniqueItems: true, items: {type: string}}
+    Preferences:
+      type: object
+      required: [campaignYear, cities, funding, studyForms]
+      properties:
+        campaignYear: {type: integer, example: 2026}
+        cities:
+          type: array
+          uniqueItems: true
+          description: Точные названия городов; пустой список означает любые города
+          items: {type: string}
+        funding:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, enum: [budget, paid]}
+        studyForms:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, enum: [full_time, part_time, correspondence]}
+    ProgramOption:
+      type: object
+      required: [programId, programName, universityId, universityName, direction, city, campus, campaignYear, funding, studyForm, competitionType, eligibility, bviAvailable, totalScore, passingScorePreviousYear, previousYear, scoreDifference, comparison, breakdown, reasons, dataSource]
+      properties:
+        programId: {type: string}
+        programName: {type: string}
+        universityId: {type: string}
+        universityName: {type: string}
+        direction: {$ref: '#/components/schemas/Direction'}
+        city: {type: string}
+        campus: {type: string, nullable: true}
+        campaignYear: {type: integer}
+        funding: {type: string, enum: [budget, paid]}
+        studyForm: {type: string, enum: [full_time, part_time, correspondence]}
+        competitionType: {type: string, enum: [general, special_quota, separate_quota, target_quota]}
+        eligibility: {type: string, enum: [eligible, incomplete, ineligible], description: Допуск к указанному конкурсу; БВИ проверяется отдельно}
+        bviAvailable: {type: boolean}
+        totalScore: {type: integer, nullable: true, description: Балл указанного конкурса с ИД; null при неполных результатах}
+        passingScorePreviousYear: {type: integer, nullable: true}
+        previousYear: {type: integer, nullable: true}
+        scoreDifference: {type: integer, nullable: true, description: totalScore минус проходной сопоставимого конкурса; null если сравнение невозможно}
+        comparison: {type: string, enum: [bvi, above_previous, near_previous, below_previous, insufficient_data, ineligible]}
+        dataSource: {type: string, enum: [demo, verified], description: Демо-правила явно обозначаются в UI}
+        breakdown:
+          type: array
+          items:
+            type: object
+            required: [kind, name, originalScore, countedScore, applied, explanation]
+            properties:
+              kind: {type: string, enum: [exam, olympiad, achievement]}
+              name: {type: string}
+              originalScore: {type: integer, nullable: true}
+              countedScore: {type: integer, nullable: true}
+              applied: {type: boolean}
+              explanation: {type: string}
+        reasons: {type: array, items: {type: string}, description: 'Недостающие предметы, пороги, ограничения, причины отказа в льготах'}
+    PlanComposition:
+      type: object
+      required: [universities, bviProgramId]
+      properties:
+        bviProgramId: {type: string, nullable: true, description: Одно выбранное место использования БВИ или null}
+        universities:
+          type: array
+          maxItems: 5
+          description: Уникальные universityId; порядок задаёт личный приоритет вузов
+          items:
+            type: object
+            required: [universityId, programIds]
+            properties:
+              universityId: {type: string}
+              programIds:
+                type: array
+                minItems: 1
+                maxItems: 5
+                uniqueItems: true
+                description: Порядок приоритета; один programId на directionId внутри вуза. Все программы принадлежат этому вузу и одной кампании.
+                items: {type: string}
+    PlanPreview:
+      type: object
+      required: [composition, options, explanations, warnings, calculatedAt, nearPreviousThreshold]
+      properties:
+        composition: {$ref: '#/components/schemas/PlanComposition'}
+        options: {type: array, items: {$ref: '#/components/schemas/ProgramOption'}, description: Расчёт каждого programId из composition}
+        explanations:
+          type: array
+          items:
+            type: object
+            required: [programId, reason, message]
+            properties:
+              programId: {type: string}
+              reason: {type: string, enum: [selected_direction, auto_fill, retained]}
+              message: {type: string}
+        warnings: {type: array, items: {type: string}, description: 'Недостаток кандидатов, непокрытые интересы, потеря права БВИ и другие ограничения'}
+        calculatedAt: {type: string, format: date-time}
+        nearPreviousThreshold: {type: integer, minimum: 0, description: '|scoreDifference| <= threshold означает near_previous; выше/ниже за пределами. Настройка backend.'}
+    Plan:
+      allOf:
+        - {$ref: '#/components/schemas/PlanPreview'}
+        - type: object
+          required: [version, savedAt]
+          properties:
+            version: {type: integer, minimum: 0}
+            savedAt: {type: string, format: date-time, nullable: true}
