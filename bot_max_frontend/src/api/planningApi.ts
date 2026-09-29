@@ -7,6 +7,8 @@ import type {
   Olympiad,
   Page,
   PlanComposition,
+  PlanPreview,
+  PlanPreviewRequest,
   ProgramOption,
   StudyDirection,
 } from "@/api/types/planning";
@@ -57,6 +59,16 @@ export function saveApplicationPlan(
   return request(`${sessionPath(id)}/application-plan`, {
     method: "PUT",
     body: JSON.stringify({ ...composition, expectedVersion }),
+  });
+}
+/** Автоплан 5×5: только черновик, для сохранения нужен saveApplicationPlan. */
+export function previewApplicationPlan(
+  id: string,
+  body: PlanPreviewRequest,
+): Promise<PlanPreview> {
+  return request(`${sessionPath(id)}/application-plan/preview`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 export function getOlympiads(): Promise<Olympiad[]> {
