@@ -77,11 +77,12 @@ class AdmissionBenefitsIntegrationTests {
 
 		AdmissionBenefitsResponse response = admissionBenefitService.getBenefits(userId, null);
 
+		// V13: только Москва, ИТМО удалён.
 		assertThat(response.universities()).extracting(UniversityBenefitsResponse::universityId)
-				.containsExactly("hse", "itmo", "mipt", "msu");
-		// ИТМО даёт БВИ за математику I уровня и призёрам.
-		assertThat(programs(response, "itmo")).extracting(ProgramBenefitsResponse::benefit).containsOnly("bvi");
-		assertThat(response.bviNote()).isNotNull();
+				.contains("hse", "mipt", "msu", "bmstu", "mephi")
+				.doesNotContain("itmo");
+		// Призёру БВИ не даёт ни один вуз.
+		assertThat(response.bviNote()).isNull();
 
 		// ВШЭ: БВИ только победителям, призёру 100 баллов; ИД: медаль 3 + ГТО 2.
 		ProgramBenefitsResponse hse = program(response, "hse", "hse-software");
@@ -101,7 +102,29 @@ class AdmissionBenefitsIntegrationTests {
 		assertThat(msu.benefit()).isEqualTo("score_100");
 		assertThat(msu.totalScore()).isEqualTo(100 + 90 + 88 + 6);
 
-		assertThat(admissionBenefitService.countBviPrograms(userId)).isEqualTo(3);
+		assertThat(admissionBenefitService.countBviPrograms(userId)).isZero();
+		assertThat(achievementPrivilegeService.setPrivileges(userId, List.of()).bestQuotaType()).isEqualTo("none");
+	}
+
+	@Test
+	void winnerGetsBviAndHundredPointsInGeneralCompetition() {
+		onboardingApiService.setEgeScores(userId, List.of(
+				new EgeScoreInput("math-profile", 80),
+				new EgeScoreInput("informatics", 90),
+				new EgeScoreInput("russian", 88)));
+		olympiadService.setDiplomas(userId, List.of(new OlympiadDiplomaInput("vysshaya-proba-math-2026", "winner")));
+
+		AdmissionBenefitsResponse response = admissionBenefitService.getBenefits(userId, null);
+
+		// ВШЭ и МГУ дают победителю БВИ, а в общем конкурсе математика всё равно считается как 100.
+		ProgramBenefitsResponse hse = program(response, "hse", "hse-software");
+		assertThat(hse.benefit()).isEqualTo("bvi");
+		assertThat(hse.egeScoreWithBenefits()).isEqualTo(100 + 90 + 88);
+		assertThat(hse.olympiads().getFirst().note()).contains("В общем конкурсе — 100 баллов");
+		assertThat(program(response, "msu", "msu-math").benefit()).isEqualTo("bvi");
+		// МФТИ: для БВИ нужно 85 по математике.
+		assertThat(program(response, "mipt", "mipt-applied-math").benefit()).isEqualTo("score_100");
+		assertThat(response.bviNote()).isNotNull();
 		assertThat(achievementPrivilegeService.setPrivileges(userId, List.of()).bestQuotaType()).isEqualTo("bvi");
 	}
 
