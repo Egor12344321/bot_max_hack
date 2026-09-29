@@ -174,7 +174,7 @@ public class QuestionnaireService {
 	}
 
 	private String localizedName(Subject subject, String language) {
-		String name = switch (language) {
+		String name = switch (language == null ? "ru" : language) {
 			case "kk" -> subject.getNameKk();
 			case "ky" -> subject.getNameKy();
 			default -> subject.getNameRu();
@@ -183,7 +183,7 @@ public class QuestionnaireService {
 	}
 
 	private String localizedName(CitizenshipOption option, String language) {
-		String name = switch (language) {
+		String name = switch (language == null ? "ru" : language) {
 			case "kk" -> option.getNameKk();
 			case "ky" -> option.getNameKy();
 			default -> option.getNameRu();

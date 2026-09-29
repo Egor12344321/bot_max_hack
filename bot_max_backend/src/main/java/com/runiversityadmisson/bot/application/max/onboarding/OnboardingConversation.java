@@ -8,6 +8,8 @@ import com.runiversityadmisson.bot.infrastructure.external.max.MaxBotClient;
 import java.util.Locale;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,25 +18,54 @@ public class OnboardingConversation {
 
 	private static final Set<String> EAEU_COUNTRIES = Set.of("BY", "KZ", "KG", "AM");
 
+	/** Язык и гражданство, которые ставятся, когда эти шаги выключены. */
+	static final String DEFAULT_LANGUAGE = "ru";
+	static final String DEFAULT_CITIZENSHIP = "RU";
+
 	private final MaxBotClient maxBotClient;
 	private final BotQuestionnaireStore sessionService;
 	private final OnboardingMessenger botMessageService;
 	private final UserService userService;
+	private final boolean askLanguageAndCitizenship;
 
+	/** Полный диалог: язык → гражданство → ЕГЭ. */
 	public OnboardingConversation(MaxBotClient maxBotClient,
 							 BotQuestionnaireStore sessionService,
 							 OnboardingMessenger botMessageService,
 							 UserService userService) {
+		this(maxBotClient, sessionService, botMessageService, userService, true);
+	}
+
+	/**
+	 * @param askLanguageAndCitizenship флаг bot.onboarding.ask-language-and-citizenship: false — сразу к ЕГЭ,
+	 *                                  язык русский, гражданство РФ
+	 */
+	@Autowired
+	public OnboardingConversation(MaxBotClient maxBotClient,
+							 BotQuestionnaireStore sessionService,
+							 OnboardingMessenger botMessageService,
+							 UserService userService,
+							 @Value("${bot.onboarding.ask-language-and-citizenship:false}") boolean askLanguageAndCitizenship) {
 		this.maxBotClient = maxBotClient;
 		this.sessionService = sessionService;
 		this.botMessageService = botMessageService;
 		this.userService = userService;
+		this.askLanguageAndCitizenship = askLanguageAndCitizenship;
 	}
 
 	public void start(Long userId) {
 		BotQuestionnaire session = sessionService.getOrCreate(userId);
 		if (session.getState() != BotQuestionnaireStep.NEW) {
 			log.debug("Сессия {} уже запущена на этапе {}", userId, session.getState());
+			return;
+		}
+		if (!askLanguageAndCitizenship) {
+			session.setLanguage(DEFAULT_LANGUAGE);
+			session.setCitizenship(DEFAULT_CITIZENSHIP);
+			session.setTrack("domestic_equivalent");
+			moveTo(session, BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
+			botMessageService.sendEgeGreeting(userId, DEFAULT_LANGUAGE);
+			botMessageService.sendSubjectQuestion(userId, DEFAULT_LANGUAGE);
 			return;
 		}
 		moveTo(session, BotQuestionnaireStep.WAITING_FOR_LANGUAGE);

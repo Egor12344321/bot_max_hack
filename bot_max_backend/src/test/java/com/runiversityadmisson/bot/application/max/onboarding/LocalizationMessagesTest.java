@@ -11,6 +11,7 @@ class LocalizationMessagesTest {
 
 	private static final List<String> MESSAGE_KEYS = List.of(
 			"greeting",
+			"greeting.ege",
 			"ask.citizenship",
 			"track.eaeu",
 			"track.russia",

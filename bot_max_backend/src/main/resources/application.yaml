@@ -9,6 +9,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  web:
+    # Сообщения валидации всегда по-русски, независимо от Accept-Language клиента.
+    locale: ru
+    locale-resolver: fixed
   messages:
     basename: messages
     encoding: UTF-8
@@ -35,3 +39,6 @@ logging:
 
 bot:
   session-ttl: PT1H
+  onboarding:
+    # true — бот спрашивает язык и гражданство; false — сразу к ЕГЭ, язык ru, гражданство RU
+    ask-language-and-citizenship: ${BOT_ASK_LANGUAGE_AND_CITIZENSHIP:false}

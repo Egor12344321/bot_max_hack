@@ -65,6 +65,26 @@ class OnboardingConversationTest {
 	}
 
 	@Test
+	void withoutLanguageAndCitizenshipStepsBotStartsWithEge() {
+		BotQuestionnaire session = new BotQuestionnaire();
+		session.setUserId(USER_ID);
+		BotQuestionnaireStore sessionService = mock(BotQuestionnaireStore.class);
+		OnboardingMessenger botMessageService = mock(OnboardingMessenger.class);
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
+
+		new OnboardingConversation(mock(MaxBotClient.class), sessionService, botMessageService,
+				mock(UserService.class), false).start(USER_ID);
+
+		assertThat(session.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
+		assertThat(session.getLanguage()).isEqualTo("ru");
+		assertThat(session.getCitizenship()).isEqualTo("RU");
+		assertThat(session.getTrack()).isEqualTo("domestic_equivalent");
+		verify(botMessageService, never()).sendLanguageQuestion(USER_ID);
+		verify(botMessageService).sendEgeGreeting(USER_ID, "ru");
+		verify(botMessageService).sendSubjectQuestion(USER_ID, "ru");
+	}
+
+	@Test
 	void russiaLeadsToEgeTrack() {
 		BotQuestionnaire session = new BotQuestionnaire();
 		session.setUserId(USER_ID);

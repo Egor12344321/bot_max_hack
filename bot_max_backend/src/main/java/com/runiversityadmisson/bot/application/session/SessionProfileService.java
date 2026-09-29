@@ -51,7 +51,7 @@ public class SessionProfileService {
 			return new EgeScoreResponse(score.getSubjectId(), score.getSubjectId(), score.getScore(), 0, false);
 		}
 
-		String name = switch (language) {
+		String name = switch (language == null ? "ru" : language) {
 			case "kk" -> subject.getNameKk();
 			case "ky" -> subject.getNameKy();
 			default -> subject.getNameRu();

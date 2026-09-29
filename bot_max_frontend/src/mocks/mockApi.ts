@@ -5,7 +5,7 @@ import type {
   PrivilegeCategory,
 } from "@/api/types/onboarding";
 
-import type { ProfileSummary } from "@/api/types/profile";
+import type { Profile } from "@/api/types/profile";
 
 import type { ExchangeAuthResponse } from "@/api/types/auth";
 
@@ -13,7 +13,7 @@ import type { DeadlineEvent } from "@/api/types/deadlines";
 
 import type { PriorityListItem } from "@/api/types/priorities";
 
-import type { SessionDraft } from "@/api/types/session";
+import type { EgeScoreInput, EgeScoresSubmission, SessionDraft, Subject } from "@/api/types/session";
 
 import type {
   UniversityCard,
@@ -25,7 +25,7 @@ import { mockSession } from "@/mocks/session";
 import { mockInterests } from "@/mocks/interests";
 import { mockAchievements } from "@/mocks/achievements";
 import { mockPrivileges } from "@/mocks/privileges";
-import { mockProfile } from "@/mocks/profile";
+import { mockProfile, mockSubjects } from "@/mocks/profile";
 
 import {
   mockUniversities,
@@ -138,25 +138,64 @@ export async function saveMockPrivileges(
   };
 }
 
-export async function getMockProfile(): Promise<ProfileSummary> {
+export async function getMockProfile(): Promise<Profile> {
   await delay();
 
   const storage = getMockStorage();
   const universities = calculateMockUniversities(storage);
-  const ege = getEgeScoreSummary(mockSession.egeScores);
-  const bonuses = universities.map((item) => item.myScore - ege.total);
+  const egeScores = mockSession.egeScores;
+  const programs = {
+    total: universities.length,
+    bvi: 0,
+    abovePrevious: universities.filter((item) => item.status === "reserve").length,
+    nearPrevious: universities.filter((item) => item.status === "real").length,
+    belowPrevious: universities.filter((item) => item.status === "risk").length,
+    insufficientData: 0,
+  };
   return {
     ...mockProfile,
-    mainInterestCategory: mockInterests.filter((item) => storage.selectedInterestIds.includes(item.id)).map((item) => item.name).join(", "),
-    totalScore: ege.total,
-    maxScore: ege.max,
-    achievementsBonus: Math.max(0, ...bonuses),
-    admissionProbabilityPercent: Math.max(0, ...universities.map((item) => item.chancePercent)),
-    scoreDeltaVsAveragePassing: universities.length ? Math.round(universities.reduce((sum, item) => sum + item.myScore - item.passingScorePreviousYear, 0) / universities.length) : 0,
-    reserveCount: universities.filter((item) => item.status === "reserve").length,
-    realCount: universities.filter((item) => item.status === "real").length,
-    riskCount: universities.filter((item) => item.status === "risk").length,
+    egeScores,
+    egeTotal: getEgeScoreSummary(egeScores).total,
+    interests: mockInterests.filter((item) => storage.selectedInterestIds.includes(item.id)),
+    achievements: mockAchievements
+      .filter((item) => storage.selectedAchievementIds.includes(item.id))
+      .map((item) => item.name),
+    programs,
+    advice: programs.total
+      ? mockProfile.advice
+      : "По выбранным направлениям подходящих программ нет. Проверь баллы ЕГЭ или добавь направления.",
   };
+}
+
+export async function getMockSubjects(): Promise<Subject[]> {
+  await delay();
+
+  return mockSubjects;
+}
+
+export async function getMockEgeScores(): Promise<EgeScoresSubmission> {
+  await delay();
+
+  return { scores: mockSession.egeScores, allPassed: mockSession.egeScores.every((item) => item.passed) };
+}
+
+export async function saveMockEgeScores(scores: EgeScoreInput[]): Promise<EgeScoresSubmission> {
+  await delay();
+
+  const result = scores.map((input) => {
+    const subject = mockSubjects.find((item) => item.id === input.subjectId);
+    const previous = mockSession.egeScores.find((item) => item.subjectId === input.subjectId);
+    const minThreshold = subject?.minThreshold ?? previous?.minThreshold ?? 0;
+    return {
+      subjectId: input.subjectId,
+      subjectName: subject?.name ?? previous?.subjectName ?? input.subjectId,
+      score: input.score,
+      minThreshold,
+      passed: input.score >= minThreshold,
+    };
+  });
+  mockSession.egeScores = result;
+  return { scores: result, allPassed: result.every((item) => item.passed) };
 }
 
 export async function getMockUniversities(): Promise<UniversitySummary[]> {

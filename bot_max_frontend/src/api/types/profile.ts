@@ -1,19 +1,32 @@
-export interface ProfileSummary {
-  fullName: string;
-  graduationYear: number;
+import type { LanguageCode } from "@/api/types/localization";
+import type { InterestCategory } from "@/api/types/onboarding";
+import type { SavedDiploma, StudyDirection } from "@/api/types/planning";
+import type { EgeScoreResult } from "@/api/types/session";
 
-  mainInterestCategory: string;
+/**
+ * Сводка по рекомендациям всех выбранных направлений.
+ * Вероятность поступления не считается: по одному прошлогоднему проходному её не оценить.
+ */
+export interface ProfilePrograms {
+  total: number;
+  bvi: number;
+  abovePrevious: number;
+  nearPrevious: number;
+  belowPrevious: number;
+  insufficientData: number;
+}
 
-  totalScore: number;
-  maxScore: number;
-  achievementsBonus: number;
-
-  admissionProbabilityPercent: number;
-  scoreDeltaVsAveragePassing: number;
-
-  reserveCount: number;
-  realCount: number;
-  riskCount: number;
-
+/** GET /sessions/{id}/profile. Имя пользователя берётся из MAX на клиенте. */
+export interface Profile {
+  language: LanguageCode | null;
+  countryCode: string | null;
+  egeScores: EgeScoreResult[];
+  egeTotal: number;
+  interests: InterestCategory[];
+  directions: StudyDirection[];
+  olympiads: SavedDiploma[];
+  achievements: string[];
+  privileges: string[];
+  programs: ProfilePrograms;
   advice: string;
 }

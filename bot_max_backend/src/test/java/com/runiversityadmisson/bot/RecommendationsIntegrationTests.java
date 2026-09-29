@@ -5,14 +5,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.runiversityadmisson.bot.application.benefit.AchievementPrivilegeService;
 import com.runiversityadmisson.bot.application.direction.StudyDirectionService;
+import com.runiversityadmisson.bot.application.dto.direction.StudyDirectionResponse;
 import com.runiversityadmisson.bot.application.dto.exam.EgeScoreInput;
+import com.runiversityadmisson.bot.application.dto.exam.EgeScoreResponse;
 import com.runiversityadmisson.bot.application.dto.olympiad.OlympiadDiplomaInput;
 import com.runiversityadmisson.bot.application.dto.planning.ProgramBreakdownItemResponse;
 import com.runiversityadmisson.bot.application.dto.planning.ProgramOptionPageResponse;
 import com.runiversityadmisson.bot.application.dto.planning.ProgramOptionResponse;
+import com.runiversityadmisson.bot.application.dto.profile.ProfileProgramsResponse;
+import com.runiversityadmisson.bot.application.dto.profile.ProfileResponse;
 import com.runiversityadmisson.bot.application.olympiad.OlympiadService;
 import com.runiversityadmisson.bot.application.onboarding.QuestionnaireService;
 import com.runiversityadmisson.bot.application.planning.RecommendationService;
+import com.runiversityadmisson.bot.application.profile.ProfileService;
 import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
 import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
 import com.runiversityadmisson.bot.presentation.exception.BadRequestException;
@@ -46,6 +51,8 @@ class RecommendationsIntegrationTests {
 	private AchievementPrivilegeService achievementPrivilegeService;
 	@Autowired
 	private RecommendationService recommendationService;
+	@Autowired
+	private ProfileService profileService;
 
 	private UUID userId;
 
@@ -135,6 +142,29 @@ class RecommendationsIntegrationTests {
 
 		assertThat(page.items()).extracting(ProgramOptionResponse::programId).containsExactly("miet-090304", "mephi-090304");
 		assertThat(page.total()).isEqualTo(6);
+	}
+
+	@Test
+	void profileSummarizesRecommendations() {
+		ProfileResponse profile = profileService.getProfile(userId);
+
+		assertThat(profile.egeTotal()).isEqualTo(80 + 85 + 90);
+		assertThat(profile.egeScores()).hasSize(3);
+		assertThat(profile.directions()).extracting(StudyDirectionResponse::id).containsExactly(SOFTWARE_ENGINEERING);
+		assertThat(profile.achievements()).containsExactly("Медаль «За особые успехи в учении» I степени");
+		// Та же подборка, что в showsOnlyProgramsWithinWindowSortedByDifference.
+		assertThat(profile.programs()).isEqualTo(new ProfileProgramsResponse(6, 0, 2, 1, 2, 1));
+		assertThat(profile.advice()).startsWith("Программ с запасом: 2.");
+	}
+
+	@Test
+	void profileWorksWithoutLanguage() {
+		User user = userRepository.findById(userId).orElseThrow();
+		user.setLanguage(null);
+
+		assertThat(profileService.getProfile(userId).egeScores())
+				.extracting(EgeScoreResponse::subjectName)
+				.contains("Информатика");
 	}
 
 	@Test
