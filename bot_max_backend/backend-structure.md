@@ -45,6 +45,7 @@
 - `session` — чтение сохранённой анкеты.
 - `auth` — обмен launchParams на JWT.
 - `planning` — рекомендации программ по выбранному направлению.
+- `profile` — экран профиля: данные пользователя и сводка по подборкам.
 
 Код платформы MAX:
 
@@ -72,7 +73,8 @@ DTO результатов расчёта льгот, включая OlympiadBen
 - `benefit` — AdmissionBenefitsController;
 - `webhook` — MaxWebhookController;
 - `planning` — RecommendationsController; остальные контроллеры планирования пока заготовки;
-- `profile`, `university` — контроллеры-заготовки профиля и вузов.
+- `profile` — ProfileController;
+- `university` — контроллер-заготовка вузов.
 
 Общие обработчики ошибок — `presentation/exception`, фильтры — `presentation/filter`,
 настройка безопасности и JWT — `presentation/security`.

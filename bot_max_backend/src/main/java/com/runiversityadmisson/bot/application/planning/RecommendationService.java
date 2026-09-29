@@ -79,19 +79,40 @@ public class RecommendationService {
 			throw new BadRequestException("Направление не выбрано");
 		}
 
-		List<Program> programs = programRepository.findByDirectionIdOrderByUniversityIdAscIdAsc(directionId);
-		Map<String, Integer> minScores = subjectRepository.findAll().stream()
-				.collect(Collectors.toMap(Subject::getId, Subject::getMinThreshold));
+		List<ProgramOptionResponse> selected = recommend(sessionId, direction, minScores());
+		return new ProgramOptionPageResponse(selected.stream().skip(offset).limit(limit).toList(), selected.size());
+	}
+
+	/** Подборки по всем выбранным направлениям пользователя, в порядке его выбора. */
+	@Transactional(readOnly = true)
+	public List<ProgramOptionResponse> getAllRecommendations(UUID sessionId) {
+		User user = userRepository.findById(sessionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
+		Map<String, StudyDirection> directions = directionRepository.findAllById(user.getDirectionIds()).stream()
+				.collect(Collectors.toMap(StudyDirection::getId, direction -> direction));
+		Map<String, Integer> minScores = minScores();
+		return user.getDirectionIds().stream()
+				.filter(directions::containsKey)
+				.flatMap(id -> recommend(sessionId, directions.get(id), minScores).stream())
+				.toList();
+	}
+
+	private List<ProgramOptionResponse> recommend(UUID sessionId, StudyDirection direction,
+			Map<String, Integer> minScores) {
+		List<Program> programs = programRepository.findByDirectionIdOrderByUniversityIdAscIdAsc(direction.getId());
 		StudyDirectionResponse directionResponse =
 				new StudyDirectionResponse(direction.getId(), direction.getCode(), direction.getName());
-
 		List<Evaluated> evaluated = admissionBenefitService.calculateForPrograms(sessionId, programs).stream()
 				.map(result -> evaluate(result, minScores))
 				.toList();
-		List<ProgramOptionResponse> selected = policy.select(evaluated, Evaluated::candidate).stream()
+		return policy.select(evaluated, Evaluated::candidate).stream()
 				.map(item -> toResponse(item, directionResponse))
 				.toList();
-		return new ProgramOptionPageResponse(selected.stream().skip(offset).limit(limit).toList(), selected.size());
+	}
+
+	private Map<String, Integer> minScores() {
+		return subjectRepository.findAll().stream()
+				.collect(Collectors.toMap(Subject::getId, Subject::getMinThreshold));
 	}
 
 	private Evaluated evaluate(ProgramResult result, Map<String, Integer> minScores) {

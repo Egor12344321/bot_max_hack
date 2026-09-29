@@ -774,8 +774,13 @@ paths:
   /sessions/{sessionId}/profile:
     get:
       tags: [Profile]
-      summary: "Экран «Профиль»: итоговый балл, вероятность, запас/реально/риск"
-      operationId: getProfileSummary
+      summary: "Экран «Профиль»: данные пользователя и сводка по подборкам"
+      description: >
+        Баллы ЕГЭ, интересы, направления, дипломы, ИД и льготы пользователя плюс сводка
+        по рекомендациям всех выбранных направлений: сколько программ выше, около и ниже
+        прошлогоднего проходного и сколько с БВИ. Вероятность поступления не считается.
+        Имя пользователя фронт берёт из MAX (initData), бэкенд его не хранит.
+      operationId: getProfile
       parameters:
         - $ref: '#/components/parameters/SessionId'
       responses:
@@ -784,7 +789,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileSummary'
+                $ref: '#/components/schemas/Profile'
 
   # ---------- DEADLINES ----------
   /sessions/{sessionId}/deadlines:
@@ -1458,41 +1463,85 @@ components:
         status:
           $ref: '#/components/schemas/RiskStatus'
 
-    ProfileSummary:
+    Profile:
       type: object
+      required: [egeScores, egeTotal, interests, directions, olympiads, achievements, privileges, programs, advice]
       properties:
-        fullName:
+        language:
           type: string
-        graduationYear:
-          type: integer
-          example: 2026
-        mainInterestCategory:
+          nullable: true
+          example: ru
+        countryCode:
           type: string
-          example: Биология
-        totalScore:
+          nullable: true
+          example: RU
+        egeScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResult'
+        egeTotal:
           type: integer
-          example: 285
-        maxScore:
-          type: integer
-          example: 310
-        achievementsBonus:
-          type: integer
-          example: 10
-        admissionProbabilityPercent:
-          type: integer
-          example: 78
-        scoreDeltaVsAveragePassing:
-          type: integer
-          example: 9
-        reserveCount:
-          type: integer
-        realCount:
-          type: integer
-        riskCount:
-          type: integer
+          example: 255
+        interests:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterestCategory'
+        directions:
+          type: array
+          description: Выбранные направления в порядке пользователя
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              code:
+                type: string
+                example: '09.03.04'
+              name:
+                type: string
+                example: Программная инженерия
+        olympiads:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadDiploma'
+        achievements:
+          type: array
+          description: Названия отмеченных ИД
+          items:
+            type: string
+        privileges:
+          type: array
+          description: Названия отмеченных льготных категорий
+          items:
+            type: string
+        programs:
+          type: object
+          description: Сводка по рекомендациям всех выбранных направлений
+          properties:
+            total:
+              type: integer
+              example: 6
+            bvi:
+              type: integer
+              example: 0
+            abovePrevious:
+              type: integer
+              description: Выше прошлогоднего проходного («Запас»)
+              example: 2
+            nearPrevious:
+              type: integer
+              description: Около прошлогоднего проходного («Реально»)
+              example: 1
+            belowPrevious:
+              type: integer
+              description: Ниже прошлогоднего проходного («Риск»)
+              example: 2
+            insufficientData:
+              type: integer
+              example: 1
         advice:
           type: string
-          example: "Поставь МГУ на 1-й приоритет — у тебя запас +15 баллов и меньше конкурентов-льготников"
+          example: "Программ с запасом: 2. Оставь их в плане как страховку, а более сильные вузы ставь выше по приоритету."
 
     DeadlineEvent:
       type: object

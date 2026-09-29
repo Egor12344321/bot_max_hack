@@ -117,6 +117,13 @@ public class OnboardingMessenger {
                 .build());
     }
 
+    /** Приветствие, когда язык и гражданство не спрашиваются. */
+    public void sendEgeGreeting(Long userId, String lang) {
+        maxBotClient.sendMessage(userId, NewMessageBody.builder()
+                .text(msg("greeting.ege", lang))
+                .build());
+    }
+
     public void sendTrackMessage(Long userId, String lang, String trackKey) {
         maxBotClient.sendMessage(userId, NewMessageBody.builder()
                 .text(msg(trackKey, lang))
