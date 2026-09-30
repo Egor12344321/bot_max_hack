@@ -96,17 +96,6 @@ function ProfileContent({ profile }: { profile: Profile }) {
         </div>
       </section>
 
-      {(programs.bvi > 0 || programs.insufficientData > 0) && (
-        <div className={`${ui.notice} ${styles.section}`}>
-          {programs.bvi > 0 && <div>С БВИ: {programs.bvi}</div>}
-          {programs.insufficientData > 0 && (
-            <div>
-              Без данных о прошлогоднем проходном: {programs.insufficientData}
-            </div>
-          )}
-        </div>
-      )}
-
       <section className={styles.advice}>
         <div>
           <div className={styles.adviceTitle}>Совет</div>
