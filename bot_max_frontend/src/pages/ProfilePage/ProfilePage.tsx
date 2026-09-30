@@ -28,17 +28,17 @@ function diplomaLabel(diploma: SavedDiploma) {
 function ProfileContent({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
   const name = getMaxUserName() ?? "Абитуриент";
-  const interests = profile.interests.map((item) => item.name).join(", ");
   const { programs } = profile;
 
   return (
     <Container className={styles.page}>
       <section className={styles.profileCard}>
         <div className={styles.profileTop}>
-          <div className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toLocaleUpperCase("ru-RU")}</div>
+          <div className={styles.avatar} aria-hidden="true">
+            {name.slice(0, 1).toLocaleUpperCase("ru-RU")}
+          </div>
           <div>
             <div className={styles.name}>{name}</div>
-            <div className={styles.subtitle}>{interests || "Интересы не выбраны"}</div>
           </div>
         </div>
         <div className={styles.scoreRow}>
@@ -46,7 +46,11 @@ function ProfileContent({ profile }: { profile: Profile }) {
             <div className={styles.scoreLabel}>Сумма баллов ЕГЭ</div>
             <div className={styles.scoreValue}>
               <span className={styles.score}>{profile.egeTotal}</span>
-              {profile.egeScores.length > 0 && <span className={styles.scoreMax}>/{profile.egeScores.length * 100}</span>}
+              {profile.egeScores.length > 0 && (
+                <span className={styles.scoreMax}>
+                  /{profile.egeScores.length * 100}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -55,40 +59,55 @@ function ProfileContent({ profile }: { profile: Profile }) {
       <section className={`${ui.card} ${styles.section}`}>
         <div className={ui.row}>
           <strong>Баллы ЕГЭ</strong>
-          <button type="button" className={ui.button} onClick={() => navigate("/profile/ege")}>
+          <button
+            type="button"
+            className={ui.button}
+            onClick={() => navigate("/profile/ege")}
+          >
             Изменить
           </button>
         </div>
-        {!profile.egeScores.length && <span className={ui.muted}>Баллы ЕГЭ пока не указаны.</span>}
+        {!profile.egeScores.length && (
+          <span className={ui.muted}>Баллы ЕГЭ пока не указаны.</span>
+        )}
         {profile.egeScores.map((item) => (
           <div key={item.subjectId} className={ui.row}>
             <span>{item.subjectName}</span>
             <span>
               <strong>{item.score}</strong>
-              {!item.passed && <span className={ui.muted}> · ниже порога {item.minThreshold}</span>}
+              {!item.passed && (
+                <span className={ui.muted}>
+                  {" "}
+                  · ниже порога {item.minThreshold}
+                </span>
+              )}
             </span>
           </div>
         ))}
       </section>
 
       <section className={styles.section}>
-        <div className={styles.sectionTitle}>Подборка по выбранным направлениям</div>
+        <div className={styles.sectionTitle}>
+          Подборка по выбранным направлениям
+        </div>
         <div className={ui.muted}>
-          Программ в подборке: {programs.total}. Сравнение с проходным баллом прошлого года, это не гарантия
-          поступления.
+          Программ в подборке: {programs.total}. Сравнение с проходным баллом
+          прошлого года, это не гарантия поступления.
         </div>
       </section>
-
 
       {(programs.bvi > 0 || programs.insufficientData > 0) && (
         <div className={`${ui.notice} ${styles.section}`}>
           {programs.bvi > 0 && <div>С БВИ: {programs.bvi}</div>}
-          {programs.insufficientData > 0 && <div>Без данных о прошлогоднем проходном: {programs.insufficientData}</div>}
+          {programs.insufficientData > 0 && (
+            <div>
+              Без данных о прошлогоднем проходном: {programs.insufficientData}
+            </div>
+          )}
         </div>
       )}
 
       <section className={styles.advice}>
-
         <div>
           <div className={styles.adviceTitle}>Совет</div>
           <div className={styles.adviceText}>{profile.advice}</div>
@@ -97,7 +116,9 @@ function ProfileContent({ profile }: { profile: Profile }) {
 
       <section className={`${ui.card} ${styles.section}`}>
         <strong>Направления</strong>
-        {!profile.directions.length && <span className={ui.muted}>Направления не выбраны.</span>}
+        {!profile.directions.length && (
+          <span className={ui.muted}>Направления не выбраны.</span>
+        )}
         <div className={ui.actions}>
           {profile.directions.map((item) => (
             <span key={item.id} className={ui.badge}>
@@ -107,7 +128,9 @@ function ProfileContent({ profile }: { profile: Profile }) {
         </div>
       </section>
 
-      {(profile.olympiads.length > 0 || profile.achievements.length > 0 || profile.privileges.length > 0) && (
+      {(profile.olympiads.length > 0 ||
+        profile.achievements.length > 0 ||
+        profile.privileges.length > 0) && (
         <section className={`${ui.card} ${styles.section}`}>
           {profile.olympiads.length > 0 && (
             <>
