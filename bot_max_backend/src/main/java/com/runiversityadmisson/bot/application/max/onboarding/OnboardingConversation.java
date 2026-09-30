@@ -57,6 +57,15 @@ public class OnboardingConversation {
 		this.subjects = subjects;
 	}
 
+	/**
+	 * Пользователь запустил бота (bot_started): незаконченная анкета в Redis сбрасывается,
+	 * диалог начинается заново. Сохранённая заявка в БД не трогается — её удаляет только /restart.
+	 */
+	public void restartFromBotStart(Long userId) {
+		sessionService.delete(userId);
+		start(userId);
+	}
+
 	public void start(Long userId) {
 		BotQuestionnaire session = sessionService.getOrCreate(userId);
 		if (session.getState() != BotQuestionnaireStep.NEW) {
