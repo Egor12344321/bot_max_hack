@@ -11,6 +11,9 @@ public record ProfileProgramsResponse(
 		int abovePrevious,
 		int nearPrevious,
 		int belowPrevious,
-		int insufficientData
+		int insufficientData,
+		int reserveCount,
+		int realCount,
+		int riskCount
 ) {
 }

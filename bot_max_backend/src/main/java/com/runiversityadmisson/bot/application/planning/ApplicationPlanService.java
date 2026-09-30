@@ -9,6 +9,7 @@ import com.runiversityadmisson.bot.application.dto.planning.PlanUniversityDto;
 import com.runiversityadmisson.bot.application.dto.planning.PlanUniversityRankingResponse;
 import com.runiversityadmisson.bot.application.dto.planning.PreviewApplicationPlanRequest;
 import com.runiversityadmisson.bot.application.dto.planning.ProgramOptionResponse;
+import com.runiversityadmisson.bot.application.dto.planning.ProgramOptionPageResponse;
 import com.runiversityadmisson.bot.application.dto.planning.SaveApplicationPlanRequest;
 import com.runiversityadmisson.bot.domain.applicant.model.direction.StudyDirection;
 import com.runiversityadmisson.bot.domain.applicant.model.planning.ApplicationPlan;
@@ -87,6 +88,21 @@ public class ApplicationPlanService {
 				.orElseGet(() -> toResponse(new PlanCompositionDto(List.of(), null), evaluation, 0, null));
 	}
 
+	/** Все доступные программы выбранных направлений для ручного добавления вуза в план. */
+	@Transactional(readOnly = true)
+	public ProgramOptionPageResponse getOptions(
+			UUID sessionId, String universityId, int offset, int limit) {
+		User user = getUser(sessionId);
+		if (offset < 0 || limit < 1 || limit > 100) throw new BadRequestException("offset >= 0, limit от 1 до 100");
+		List<Program> programs = programRepository.findAllByOrderByUniversityIdAscIdAsc().stream()
+				.filter(program -> user.getDirectionIds().contains(program.getDirectionId()))
+				.filter(program -> universityId == null || universityId.equals(program.getUniversity().getId())).toList();
+		List<ProgramOptionResponse> options = recommendationService.evaluatePrograms(sessionId, programs).stream()
+				.filter(ApplicationPlanService::available).toList();
+		return new ProgramOptionPageResponse(
+				options.stream().skip(offset).limit(limit).toList(), options.size());
+	}
+
 	@Transactional
 	public ApplicationPlanResponse savePlan(UUID sessionId, SaveApplicationPlanRequest request) {
 		getUser(sessionId);
@@ -127,7 +143,7 @@ public class ApplicationPlanService {
 	public PlanPreviewResponse preview(UUID sessionId, PreviewApplicationPlanRequest request) {
 		User user = getUser(sessionId);
 		boolean fill = parseMode(request);
-		int deficit = request.allowedDeficit() == null ? DEFAULT_DEFICIT : request.allowedDeficit();
+		int deficit = request.allowedDeficit() == null ? user.getMaxScoreDeficit() : request.allowedDeficit();
 		if (!ALLOWED_DEFICITS.contains(deficit)) {
 			throw new BadRequestException("Допустимое отставание от проходного: 0, 10, 15 или 20 баллов");
 		}
@@ -276,7 +292,8 @@ public class ApplicationPlanService {
 
 	private static Candidate candidate(Program program, ProgramOptionResponse option, int deficit) {
 		return new Candidate(program.getId(), program.getUniversity().getId(), program.getDirectionId(),
-				option.bviAvailable(), eligibleForPlan(option, deficit), relativePassingScore(program));
+				option.bviAvailable(), eligibleForPlan(option, deficit), option.passingScorePreviousYear() == null
+						|| option.entranceScoreMax() == 0 ? null : (double) option.passingScorePreviousYear() / option.entranceScoreMax());
 	}
 
 	/** Невыбранные направления, у которых есть общая категория интересов с выбранными. */

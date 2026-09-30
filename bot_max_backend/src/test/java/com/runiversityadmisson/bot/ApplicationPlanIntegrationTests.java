@@ -165,6 +165,25 @@ class ApplicationPlanIntegrationTests {
 				"Программа, где используется БВИ, должна быть в плане");
 	}
 
+	@Test
+	void manuallyAddsReordersAndRemovesUniversitiesFromSelectedDirections() throws Exception {
+		mockMvc.perform(authorized(get("/v1/sessions/{id}/application-plan/options", userId).param("universityId", "stankin")))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].programId").value("stankin-090304"))
+				.andExpect(jsonPath("$.total").value(1));
+		String stankin = "{\"universityId\":\"stankin\",\"programIds\":[\"stankin-090304\"]}";
+		String fa = "{\"universityId\":\"fa\",\"programIds\":[\"fa-090304\"]}";
+		String body = "{\"expectedVersion\":%d,\"universities\":[%s]}";
+		mockMvc.perform(authorized(put("/v1/sessions/{id}/application-plan", userId)).contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(0, stankin + "," + fa))).andExpect(status().isOk());
+		mockMvc.perform(authorized(put("/v1/sessions/{id}/application-plan", userId)).contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(1, fa + "," + stankin))).andExpect(status().isOk())
+				.andExpect(jsonPath("$.composition.universities[0].universityId").value("fa"));
+		mockMvc.perform(authorized(put("/v1/sessions/{id}/application-plan", userId)).contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(2, fa))).andExpect(status().isOk())
+				.andExpect(jsonPath("$.composition.universities.length()").value(1))
+				.andExpect(jsonPath("$.version").value(3));
+	}
+
 	private void assertBadRequest(String universities, String bvi, String message) throws Exception {
 		mockMvc.perform(authorized(put("/v1/sessions/{id}/application-plan", userId))
 						.contentType(MediaType.APPLICATION_JSON)

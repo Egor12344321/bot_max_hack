@@ -50,16 +50,19 @@ public class RecommendationService {
 	private final SubjectRepository subjectRepository;
 	private final AdmissionBenefitService admissionBenefitService;
 	private final ProgramRecommendationPolicy policy;
+	private final CompetitionService competitions;
 
 	public RecommendationService(UserRepository userRepository, StudyDirectionRepository directionRepository,
 			ProgramRepository programRepository, SubjectRepository subjectRepository,
 			AdmissionBenefitService admissionBenefitService,
+			CompetitionService competitions,
 			@Value("${admission.near-previous-threshold:5}") int nearPreviousThreshold) {
 		this.userRepository = userRepository;
 		this.directionRepository = directionRepository;
 		this.programRepository = programRepository;
 		this.subjectRepository = subjectRepository;
 		this.admissionBenefitService = admissionBenefitService;
+		this.competitions = competitions;
 		this.policy = new ProgramRecommendationPolicy(nearPreviousThreshold);
 	}
 
@@ -103,6 +106,8 @@ public class RecommendationService {
 	 */
 	@Transactional(readOnly = true)
 	public List<ProgramOptionResponse> evaluatePrograms(UUID sessionId, List<Program> programs) {
+		User user = userRepository.findById(sessionId).orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
+		List<String> types = competitions.available(user);
 		Map<String, StudyDirectionResponse> directions = directionRepository
 				.findAllById(programs.stream().map(Program::getDirectionId).distinct().toList())
 				.stream()
@@ -110,19 +115,22 @@ public class RecommendationService {
 						direction -> new StudyDirectionResponse(direction.getId(), direction.getCode(), direction.getName())));
 		Map<String, Integer> minScores = minScores();
 		return admissionBenefitService.calculateForPrograms(sessionId, programs).stream()
-				.map(result -> toResponse(evaluate(result, minScores), directions.get(result.program().getDirectionId())))
+				.map(result -> toResponse(evaluate(result, minScores, types), directions.get(result.program().getDirectionId())))
 				.toList();
 	}
 
 	private List<ProgramOptionResponse> recommend(UUID sessionId, StudyDirection direction,
 			Map<String, Integer> minScores) {
 		List<Program> programs = programRepository.findByDirectionIdOrderByUniversityIdAscIdAsc(direction.getId());
+		User user = userRepository.findById(sessionId).orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
+		List<String> types = competitions.available(user);
 		StudyDirectionResponse directionResponse =
 				new StudyDirectionResponse(direction.getId(), direction.getCode(), direction.getName());
 		List<Evaluated> evaluated = admissionBenefitService.calculateForPrograms(sessionId, programs).stream()
-				.map(result -> evaluate(result, minScores))
+				.map(result -> evaluate(result, minScores, types))
 				.toList();
-		return policy.select(evaluated, Evaluated::candidate).stream()
+		return policy.select(evaluated, Evaluated::candidate, user.getMaxScoreDeficit()).stream()
+				.limit(10)
 				.map(item -> toResponse(item, directionResponse))
 				.toList();
 	}
@@ -132,7 +140,7 @@ public class RecommendationService {
 				.collect(Collectors.toMap(Subject::getId, Subject::getMinThreshold));
 	}
 
-	private Evaluated evaluate(ProgramResult result, Map<String, Integer> minScores) {
+	private Evaluated evaluate(ProgramResult result, Map<String, Integer> minScores, List<String> types) {
 		List<String> belowMinimum = result.exams().stream()
 				.filter(exam -> exam.counted() && !exam.fromOlympiad())
 				.filter(exam -> exam.egeScore() < minScores.getOrDefault(exam.subjectId(), 0))
@@ -143,17 +151,23 @@ public class RecommendationService {
 				: !belowMinimum.isEmpty() ? Eligibility.INELIGIBLE
 				: Eligibility.ELIGIBLE;
 		Integer totalScore = eligibility == Eligibility.INCOMPLETE ? null : result.totalScore();
-		Integer passing = result.program().getPassingScorePreviousYear();
+		String type = types.getFirst();
+		var competition = result.program().getCompetitions().get(type);
+		if (competition != null && Integer.valueOf(0).equals(competition.getSeats())) eligibility = Eligibility.INELIGIBLE;
+		Integer passing = "general".equals(type) ? result.program().getPassingScorePreviousYear()
+				: competition == null ? null : competition.getPassingScore();
 		Integer difference = eligibility == Eligibility.ELIGIBLE && passing != null ? totalScore - passing : null;
 		Candidate candidate = new Candidate(result.program().getUniversity().getId(), result.program().getId(),
-				result.benefit() == OlympiadBenefit.BVI, eligibility, totalScore, difference);
-		return new Evaluated(result, candidate, belowMinimum);
+				result.benefit() == OlympiadBenefit.BVI, eligibility, totalScore, difference, passing, entranceScoreMax(result.program()));
+		return new Evaluated(result, candidate, belowMinimum, types);
 	}
 
 	private ProgramOptionResponse toResponse(Evaluated item, StudyDirectionResponse direction) {
 		ProgramResult result = item.result();
 		Program program = result.program();
 		Candidate candidate = item.candidate();
+		String type = item.types().getFirst();
+		var competition = program.getCompetitions().get(type);
 		return new ProgramOptionResponse(
 				program.getId(),
 				program.getName(),
@@ -165,17 +179,22 @@ public class RecommendationService {
 				admissionBenefitService.getCampaignYear(),
 				"budget",
 				"full_time",
-				"general",
+				type,
 				candidate.eligibility().getCode(),
 				candidate.bviAvailable(),
 				candidate.totalScore(),
-				program.getPassingScorePreviousYear(),
-				program.getPassingScoreYear(),
+				candidate.passingScore(),
+				"general".equals(type) ? program.getPassingScoreYear() : competition == null ? null : competition.getPreviousYear(),
 				candidate.scoreDifference(),
 				policy.compare(candidate).getCode(),
-				"demo",
+				competition == null ? "demo" : competition.getDataSource(),
 				breakdown(result),
-				reasons(item));
+				reasons(item), competition == null ? null : competition.getSeats(), entranceScoreMax(program), item.types());
+	}
+
+	private static int entranceScoreMax(Program program) {
+		return (int) program.getSubjects().stream().map(subject -> subject.getChoiceGroup() == null
+				? "subject:" + subject.getSubjectId() : "group:" + subject.getChoiceGroup()).distinct().count() * 100;
 	}
 
 	private static List<ProgramBreakdownItemResponse> breakdown(ProgramResult result) {
@@ -199,16 +218,24 @@ public class RecommendationService {
 	private static List<String> reasons(Evaluated item) {
 		ProgramResult result = item.result();
 		List<String> reasons = new ArrayList<>();
+		String type = item.types().getFirst();
+		var competition = result.program().getCompetitions().get(type);
+		if (competition == null || competition.getSeats() == null) reasons.add("Число мест по этому конкурсу пока не загружено");
+		if (!"general".equals(type)) {
+			reasons.add("Выбрана квота по заявленной льготе. Право и документы подтверждает приёмная комиссия; общий конкурс также доступен.");
+			if (item.candidate().passingScore() == null) reasons.add("Проходной по квоте неизвестен; проходной общего конкурса не используется");
+			reasons.add("Освобождение от испытаний по отдельным основаниям не назначается автоматически; требуется проверка основания");
+		}
 		result.missingSubjects().forEach(subject -> reasons.add("Нет результата ЕГЭ: " + subject));
 		reasons.addAll(item.belowMinimum());
-		if (result.program().getPassingScoreNote() != null) {
+		if ("general".equals(type) && result.program().getPassingScoreNote() != null) {
 			reasons.add(result.program().getPassingScoreNote());
 		}
 		if (item.candidate().bviAvailable()) {
 			reasons.add(BVI_REMINDER);
 		}
 		result.diplomas().stream()
-				.filter(diploma -> diploma.benefit() == OlympiadBenefit.NONE && diploma.note().startsWith("Для льготы"))
+				.filter(diploma -> diploma.benefit() == OlympiadBenefit.NONE && diploma.note() != null && diploma.note().startsWith("Для льготы"))
 				.forEach(diploma -> reasons.add(diplomaName(diploma) + ": " + diploma.note()));
 		return reasons;
 	}
@@ -227,6 +254,6 @@ public class RecommendationService {
 		return diploma.hundredPoints() ? Integer.valueOf(100) : null;
 	}
 
-	private record Evaluated(ProgramResult result, Candidate candidate, List<String> belowMinimum) {
+	private record Evaluated(ProgramResult result, Candidate candidate, List<String> belowMinimum, List<String> types) {
 	}
 }

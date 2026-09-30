@@ -4,6 +4,7 @@ import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaire;
 import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaireStore;
 import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaireStep;
 import com.runiversityadmisson.bot.domain.applicant.service.UserService;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.SubjectRepository;
 import com.runiversityadmisson.bot.infrastructure.external.max.MaxBotClient;
 import java.util.Locale;
 import java.util.Set;
@@ -27,13 +28,14 @@ public class OnboardingConversation {
 	private final OnboardingMessenger botMessageService;
 	private final UserService userService;
 	private final boolean askLanguageAndCitizenship;
+	private final SubjectRepository subjects;
 
 	/** Полный диалог: язык → гражданство → ЕГЭ. */
 	public OnboardingConversation(MaxBotClient maxBotClient,
 							 BotQuestionnaireStore sessionService,
 							 OnboardingMessenger botMessageService,
-							 UserService userService) {
-		this(maxBotClient, sessionService, botMessageService, userService, true);
+							 UserService userService, SubjectRepository subjects) {
+		this(maxBotClient, sessionService, botMessageService, userService, true, subjects);
 	}
 
 	/**
@@ -45,12 +47,14 @@ public class OnboardingConversation {
 							 BotQuestionnaireStore sessionService,
 							 OnboardingMessenger botMessageService,
 							 UserService userService,
-							 @Value("${bot.onboarding.ask-language-and-citizenship:false}") boolean askLanguageAndCitizenship) {
+							 @Value("${bot.onboarding.ask-language-and-citizenship:false}") boolean askLanguageAndCitizenship,
+                             SubjectRepository subjects) {
 		this.maxBotClient = maxBotClient;
 		this.sessionService = sessionService;
 		this.botMessageService = botMessageService;
 		this.userService = userService;
 		this.askLanguageAndCitizenship = askLanguageAndCitizenship;
+		this.subjects = subjects;
 	}
 
 	public void start(Long userId) {
@@ -80,6 +84,19 @@ public class OnboardingConversation {
 		}
 		if (payload == null || payload.isBlank()) {
 			log.warn("Callback от {} без payload", userId);
+			return;
+		}
+
+		boolean allowed = payload.startsWith("lang_") && session.getState() == BotQuestionnaireStep.WAITING_FOR_LANGUAGE
+				&& Set.of("ru", "kk", "ky").contains(payload.substring(5))
+				|| payload.startsWith("citizenship_") && session.getState() == BotQuestionnaireStep.WAITING_FOR_CITIZENSHIP
+				&& Set.of("RU", "BY", "KZ", "KG", "AM", "OTHER").contains(payload.substring(12))
+				|| Set.of("ege_more", "ege_done").contains(payload) && session.getState() == BotQuestionnaireStep.WAITING_FOR_EGE_MORE
+				|| payload.startsWith("subject_") && (session.getState() == BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT
+						|| session.getState() == BotQuestionnaireStep.WAITING_FOR_EGE_SCORE)
+				&& subjects.existsById(payload.substring(8));
+		if (!allowed) {
+			botMessageService.sendChooseButtonHint(userId, session.getLanguage());
 			return;
 		}
 
@@ -124,6 +141,16 @@ public class OnboardingConversation {
 		}
 
 		String subject = session.getCurrentSubject();
+		var definition = subjects.findById(subject).orElse(null);
+		if (definition == null) {
+			moveTo(session, BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
+			botMessageService.sendSubjectQuestion(userId, session.getLanguage());
+			return;
+		}
+		if (score < definition.getMinThreshold()) {
+			botMessageService.sendBelowMinimum(userId, session.getLanguage(), definition.getMinThreshold());
+			return;
+		}
 		session.getEgeScores().put(subject, score);
 		log.debug("Сессия {}: балл {} по предмету {}", userId, score, subject);
 		moveTo(session, BotQuestionnaireStep.WAITING_FOR_EGE_MORE);
@@ -177,6 +204,17 @@ public class OnboardingConversation {
 
 	private void finishEge(BotQuestionnaire session) {
 		String lang = session.getLanguage();
+		if (session.getEgeScores().size() < 3 || !session.getEgeScores().containsKey("russian")) {
+			botMessageService.sendIncompleteEge(session.getUserId(), lang);
+			return;
+		}
+		for (var entry : session.getEgeScores().entrySet()) {
+			var subject = subjects.findById(entry.getKey()).orElse(null);
+			if (subject == null || entry.getValue() == null || entry.getValue() < subject.getMinThreshold() || entry.getValue() > 100) {
+				botMessageService.sendIncompleteEge(session.getUserId(), lang);
+				return;
+			}
+		}
 		log.info("Сессия {} завершила ввод баллов: {}", session.getUserId(), session.getEgeScores().size());
 		moveTo(session, BotQuestionnaireStep.READY_FOR_MINAPP);
 		completeOnboarding(session);

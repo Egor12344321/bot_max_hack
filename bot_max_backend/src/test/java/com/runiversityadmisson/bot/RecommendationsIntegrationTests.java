@@ -53,6 +53,10 @@ class RecommendationsIntegrationTests {
 	private RecommendationService recommendationService;
 	@Autowired
 	private ProfileService profileService;
+	@Autowired
+	private com.runiversityadmisson.bot.application.planning.RecommendationSettingsService settings;
+	@Autowired
+	private com.runiversityadmisson.bot.domain.applicant.ports.university.ProgramRepository programs;
 
 	private UUID userId;
 
@@ -71,16 +75,16 @@ class RecommendationsIntegrationTests {
 	}
 
 	@Test
-	void showsOnlyProgramsWithinWindowSortedByDifference() {
+	void ranksByPassingScoreAndKeepsSafePrograms() {
 		ProgramOptionPageResponse page = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 20);
 
 		// 255 по ЕГЭ + 5 за медаль = 260. МГТУ (302), ВШЭ (297), МФТИ (299), МАИ (290), МТУСИ (285)
-		// слишком высоко, РХТУ (215) слишком низко. МИФИ без проходного (все места заняли БВИ) идёт в конец.
+		// слишком высоко. РХТУ с большим запасом остаётся, МИФИ без проходного идёт в конец.
 		assertThat(page.items()).extracting(ProgramOptionResponse::programId).containsExactly(
-				"rgsu-090304", "mirea-090304", "stankin-090304", "fa-090304", "miet-090304", "mephi-090304");
-		assertThat(page.total()).isEqualTo(6);
+				"fa-090304", "miet-090304", "stankin-090304", "mirea-090304", "rgsu-090304", "muctr-090304", "mephi-090304");
+		assertThat(page.total()).isEqualTo(7);
 		assertThat(page.items()).extracting(ProgramOptionResponse::comparison).containsExactly(
-				"above_previous", "above_previous", "near_previous", "below_previous", "below_previous",
+				"below_previous", "below_previous", "near_previous", "above_previous", "above_previous", "above_previous",
 				"insufficient_data");
 
 		ProgramOptionResponse stankin = page.items().get(2);
@@ -117,14 +121,17 @@ class RecommendationsIntegrationTests {
 	}
 
 	@Test
-	void alwaysShowsEveryBviProgram() {
+	void capsDisplayedBviProgramsButRetainsFullCandidateSet() {
 		olympiadService.setDiplomas(userId,
 				List.of(new OlympiadDiplomaInput("vysshaya-proba-informatics-2026", "winner")));
 
 		ProgramOptionPageResponse page = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 20);
 
 		// Победитель I уровня по информатике: БВИ во всех вузах, кроме МФТИ. Их 11 — больше обычного лимита 10.
-		assertThat(page.total()).isEqualTo(11);
+		assertThat(page.total()).isEqualTo(10);
+		assertThat(recommendationService.evaluatePrograms(userId,
+				programs.findByDirectionIdOrderByUniversityIdAscIdAsc(SOFTWARE_ENGINEERING)).stream()
+				.filter(ProgramOptionResponse::bviAvailable)).hasSize(11);
 		assertThat(page.items()).allSatisfy(option -> {
 			assertThat(option.bviAvailable()).isTrue();
 			assertThat(option.comparison()).isEqualTo("bvi");
@@ -140,8 +147,8 @@ class RecommendationsIntegrationTests {
 	void paginatesSelectedPrograms() {
 		ProgramOptionPageResponse page = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 4, 20);
 
-		assertThat(page.items()).extracting(ProgramOptionResponse::programId).containsExactly("miet-090304", "mephi-090304");
-		assertThat(page.total()).isEqualTo(6);
+		assertThat(page.items()).extracting(ProgramOptionResponse::programId).containsExactly("rgsu-090304", "muctr-090304", "mephi-090304");
+		assertThat(page.total()).isEqualTo(7);
 	}
 
 	@Test
@@ -153,8 +160,50 @@ class RecommendationsIntegrationTests {
 		assertThat(profile.directions()).extracting(StudyDirectionResponse::id).containsExactly(SOFTWARE_ENGINEERING);
 		assertThat(profile.achievements()).containsExactly("Медаль «За особые успехи в учении» I степени");
 		// Та же подборка, что в showsOnlyProgramsWithinWindowSortedByDifference.
-		assertThat(profile.programs()).isEqualTo(new ProfileProgramsResponse(6, 0, 2, 1, 2, 1));
-		assertThat(profile.advice()).startsWith("Программ с запасом: 2.");
+		assertThat(profile.programs()).isEqualTo(new ProfileProgramsResponse(7, 0, 3, 1, 2, 1, 1, 2, 3));
+		assertThat(profile.advice()).startsWith("Программ с запасом: 1.");
+	}
+
+	@Test
+	void svoUsesSeparateCompetitionWithoutBorrowingGeneralPassingScore() {
+		achievementPrivilegeService.setPrivileges(userId, List.of("svo_participant"));
+		var page = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100);
+		assertThat(page.total()).isEqualTo(10);
+		assertThat(page.items()).allSatisfy(option -> {
+			assertThat(option.competitionType()).isEqualTo("separate_quota");
+			assertThat(option.passingScorePreviousYear()).isNull();
+			assertThat(option.scoreDifference()).isNull();
+			assertThat(option.seats()).isNull();
+			assertThat(option.comparison()).isEqualTo("insufficient_data");
+			assertThat(option.availableCompetitionTypes()).contains("general", "separate_quota");
+		});
+		settings.save(userId, 15, "general");
+		assertThat(recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items())
+				.allSatisfy(option -> assertThat(option.competitionType()).isEqualTo("general"));
+	}
+
+	@Test
+	void usesSeatsAndPassingScoreOfSelectedQuota() {
+		achievementPrivilegeService.setPrivileges(userId, List.of("svo_child"));
+		var quota = programs.findById("stankin-090304").orElseThrow().getCompetitions().get("separate_quota");
+		quota.setSeats(7);
+		quota.setPassingScore(240);
+		quota.setPreviousYear(2025);
+		var option = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items().getFirst();
+		assertThat(option.programId()).isEqualTo("stankin-090304");
+		assertThat(option.seats()).isEqualTo(7);
+		assertThat(option.scoreDifference()).isEqualTo(20);
+		quota.setSeats(0);
+		assertThat(recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items())
+				.noneMatch(item -> item.programId().equals("stankin-090304"));
+	}
+
+	@Test
+	void validatesMinimumBeforeReplacingExistingScores() {
+		assertThatThrownBy(() -> questionnaireService.setEgeScores(userId,
+				List.of(new EgeScoreInput("russian", 35))))
+				.isInstanceOf(BadRequestException.class);
+		assertThat(questionnaireService.getEgeScores(userId).scores()).hasSize(3);
 	}
 
 	@Test

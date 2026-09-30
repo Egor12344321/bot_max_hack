@@ -24,6 +24,12 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(OnboardingRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleOnboardingRequired(OnboardingRequiredException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("onboarding_required", exception.getMessage()));
+    }
+
     /** initData невалиден → 401 Unauthorized. */
     @ExceptionHandler(InvalidInitDataException.class)
     public ResponseEntity<ErrorResponse> handleInvalidInitData(

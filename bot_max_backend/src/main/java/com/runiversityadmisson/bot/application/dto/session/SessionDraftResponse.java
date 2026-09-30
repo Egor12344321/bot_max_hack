@@ -10,6 +10,9 @@ public record SessionDraftResponse(
 		String language,
 		String countryCode,
 		List<EgeScoreResponse> egeScores,
-		boolean isCompleteFromBot
+		boolean isCompleteFromBot,
+		boolean miniAppOnboardingComplete,
+		List<String> directionIds,
+		List<String> interestCategoryIds
 ) {
 }

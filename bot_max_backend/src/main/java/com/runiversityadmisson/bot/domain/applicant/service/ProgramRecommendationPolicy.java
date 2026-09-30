@@ -1,6 +1,5 @@
 package com.runiversityadmisson.bot.domain.applicant.service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -9,25 +8,17 @@ import java.util.function.Function;
  * Отбор и ранжирование программ для экрана «Рекомендации по направлению». Без Spring и БД.
  *
  * <ul>
- *   <li>программы без допуска (нет ЕГЭ или он ниже порога) не показываются;</li>
- *   <li>программы с БВИ показываются всегда и идут первыми;</li>
- *   <li>остальные — только если разница с прошлогодним проходным в окне −15…+25,
- *       а если вместе с БВИ набралось меньше 8, окно один раз расширяется до −20…+30;</li>
- *   <li>внутри окна — по разнице по убыванию, затем программы без прошлогодних данных;</li>
- *   <li>в выдаче не больше 10 программ, кроме случая, когда программ с БВИ больше.</li>
+ *   <li>без допуска программы исключаются, кроме подтверждённого БВИ;</li>
+ *   <li>допустимый дефицит настраивается; верхней границы запаса нет;</li>
+ *   <li>проходной по убыванию, без автоматического приоритета БВИ;</li>
+ *   <li>неизвестный проходной — в конце; пагинация применяется вызывающим кодом.</li>
  * </ul>
- * При равенстве: конкурсный балл по убыванию, затем id вуза и id программы.
+ * При равенстве: id вуза и id программы. Лимит экрана применяется после ранжирования в сервисе.
  */
 public class ProgramRecommendationPolicy {
 
-	static final Window NARROW = new Window(-15, 25);
-	static final Window WIDE = new Window(-20, 30);
-	static final int MIN_RESULTS = 8;
-	static final int MAX_RESULTS = 10;
-
 	private static final Comparator<Candidate> RANK = Comparator
-			.comparing(Candidate::scoreDifference, Comparator.nullsLast(Comparator.reverseOrder()))
-			.thenComparing(Candidate::totalScore, Comparator.nullsLast(Comparator.reverseOrder()))
+			.comparing(Candidate::relativePassingScore, Comparator.nullsLast(Comparator.reverseOrder()))
 			.thenComparing(Candidate::universityId)
 			.thenComparing(Candidate::programId);
 
@@ -41,24 +32,16 @@ public class ProgramRecommendationPolicy {
 	}
 
 	public <T> List<T> select(List<T> items, Function<T, Candidate> view) {
-		List<T> bvi = sorted(items.stream().filter(item -> view.apply(item).bviAvailable()).toList(), view);
-		List<T> eligible = items.stream()
-				.filter(item -> !view.apply(item).bviAvailable())
-				.filter(item -> view.apply(item).eligibility() == Eligibility.ELIGIBLE)
-				.toList();
-		List<T> withoutData = sorted(eligible.stream()
-				.filter(item -> view.apply(item).scoreDifference() == null)
-				.toList(), view);
+		return select(items, view, 15);
+	}
 
-		List<T> inWindow = inWindow(eligible, view, NARROW);
-		if (bvi.size() + inWindow.size() < MIN_RESULTS) {
-			inWindow = inWindow(eligible, view, WIDE);
-		}
-
-		List<T> result = new ArrayList<>(bvi);
-		result.addAll(inWindow);
-		result.addAll(withoutData);
-		return result.subList(0, Math.min(result.size(), Math.max(MAX_RESULTS, bvi.size())));
+	public <T> List<T> select(List<T> items, Function<T, Candidate> view, int maxScoreDeficit) {
+		if (maxScoreDeficit < 0) throw new IllegalArgumentException("Negative score deficit");
+		return sorted(items.stream().filter(item -> {
+			Candidate candidate = view.apply(item);
+			return candidate.bviAvailable() || candidate.eligibility() == Eligibility.ELIGIBLE
+					&& (candidate.scoreDifference() == null || candidate.scoreDifference() >= -maxScoreDeficit);
+		}).toList(), view);
 	}
 
 	public Comparison compare(Candidate candidate) {
@@ -76,12 +59,6 @@ public class ProgramRecommendationPolicy {
 			return Comparison.NEAR_PREVIOUS;
 		}
 		return difference > 0 ? Comparison.ABOVE_PREVIOUS : Comparison.BELOW_PREVIOUS;
-	}
-
-	private static <T> List<T> inWindow(List<T> eligible, Function<T, Candidate> view, Window window) {
-		return sorted(eligible.stream()
-				.filter(item -> window.contains(view.apply(item).scoreDifference()))
-				.toList(), view);
 	}
 
 	private static <T> List<T> sorted(List<T> items, Function<T, Candidate> view) {
@@ -127,13 +104,14 @@ public class ProgramRecommendationPolicy {
 	 * @param scoreDifference конкурсный балл минус прошлогодний проходной; null — сравнить нельзя
 	 */
 	public record Candidate(String universityId, String programId, boolean bviAvailable, Eligibility eligibility,
-			Integer totalScore, Integer scoreDifference) {
-	}
-
-	record Window(int from, int to) {
-
-		boolean contains(Integer difference) {
-			return difference != null && difference >= from && difference <= to;
+			Integer totalScore, Integer scoreDifference, Integer passingScore, int entranceScoreMax) {
+		public Candidate(String universityId, String programId, boolean bviAvailable, Eligibility eligibility,
+				Integer totalScore, Integer scoreDifference) {
+			this(universityId, programId, bviAvailable, eligibility, totalScore, scoreDifference,
+					totalScore == null || scoreDifference == null ? null : totalScore - scoreDifference, 300);
+		}
+		public Double relativePassingScore() {
+			return passingScore == null || entranceScoreMax <= 0 ? null : (double) passingScore / entranceScoreMax;
 		}
 	}
 }

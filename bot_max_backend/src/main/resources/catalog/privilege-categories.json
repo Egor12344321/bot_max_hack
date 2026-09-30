@@ -26,5 +26,40 @@
     "quotaType": "target_quota",
     "maxQuotaPercent": null,
     "requiredDocuments": ["Договор о целевом обучении"]
+  },
+  {
+    "id": "child_disability",
+    "name": "Ребёнок-инвалид или инвалид с детства",
+    "quotaType": "special_quota",
+    "maxQuotaPercent": 10,
+    "requiredDocuments": ["Документ об инвалидности и категории"]
+  },
+  {
+    "id": "military_injury_disability",
+    "name": "Инвалид вследствие военной травмы или заболевания, полученного во время военной службы",
+    "quotaType": "special_quota",
+    "maxQuotaPercent": 10,
+    "requiredDocuments": ["Документ об инвалидности", "Документ о причине инвалидности"]
+  },
+  {
+    "id": "combat_veteran",
+    "name": "Ветеран боевых действий из категорий, имеющих право на особую квоту",
+    "quotaType": "special_quota",
+    "maxQuotaPercent": 10,
+    "requiredDocuments": ["Удостоверение ветерана боевых действий", "Подтверждение основания для особой квоты"]
+  },
+  {
+    "id": "svo_participant",
+    "name": "Участник СВО, имеющий право на отдельную квоту",
+    "quotaType": "separate_quota",
+    "maxQuotaPercent": 10,
+    "requiredDocuments": ["Документ, подтверждающий участие и основание для отдельной квоты"]
+  },
+  {
+    "id": "svo_child",
+    "name": "Ребёнок участника СВО, имеющий право на отдельную квоту",
+    "quotaType": "separate_quota",
+    "maxQuotaPercent": 10,
+    "requiredDocuments": ["Документ о родстве", "Документ, подтверждающий основание для отдельной квоты"]
   }
 ]

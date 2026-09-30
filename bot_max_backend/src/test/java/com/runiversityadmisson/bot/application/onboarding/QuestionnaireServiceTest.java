@@ -94,6 +94,24 @@ class QuestionnaireServiceTest {
 		assertThat(user.getInterests()).extracting(InterestCategory::getId).containsExactlyInAnyOrder("it", "biology");
 	}
 
+	@Test
+	void rejectsBelowMinimumBeforeDeletingStoredScores() {
+		User user = user("ru");
+		UserRepository users = mock(UserRepository.class);
+		SubjectRepository subjects = mock(SubjectRepository.class);
+		EgeScoreRepository scores = mock(EgeScoreRepository.class);
+		when(users.findById(user.getId())).thenReturn(Optional.of(user));
+		Subject physics = new Subject();
+		physics.setId("physics");
+		physics.setNameRu("Физика");
+		physics.setMinThreshold(36);
+		when(subjects.findAllById(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(physics));
+		var service = new QuestionnaireService(users, mock(), mock(), subjects, scores, mock());
+		assertThatThrownBy(() -> service.setEgeScores(user.getId(), List.of(new EgeScoreInput("physics", 35))))
+				.isInstanceOf(BadRequestException.class).hasMessageContaining("от 36 до 100");
+		org.mockito.Mockito.verifyNoInteractions(scores);
+	}
+
 	private QuestionnaireService service(
 			UserRepository userRepository,
 			SubjectRepository subjectRepository,

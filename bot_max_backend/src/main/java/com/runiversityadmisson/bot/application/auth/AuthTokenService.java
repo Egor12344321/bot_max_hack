@@ -3,7 +3,7 @@ package com.runiversityadmisson.bot.application.auth;
 import com.runiversityadmisson.bot.application.dto.auth.ExchangeResponse;
 import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
 import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
-import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
+import com.runiversityadmisson.bot.presentation.exception.OnboardingRequiredException;
 import com.runiversityadmisson.bot.presentation.security.InitDataValidator;
 import com.runiversityadmisson.bot.presentation.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +28,12 @@ public class AuthTokenService {
         User user = userRepository.findByMaxUserId(maxUserId)
                 .orElseThrow(() -> {
 					log.warn("Exchange: для пользователя MAX нет завершённой заявки");
-					return new ResourceNotFoundException("Завершённая заявка не найдена");
+                    return new OnboardingRequiredException();
 				});
 
+        if (user.getLanguage() == null || user.getCitizenship() == null || user.getTrack() == null) {
+            throw new OnboardingRequiredException();
+        }
         String accessToken = jwtService.generate(user.getId());
 		log.info("Exchange: JWT сформирован для завершённой заявки");
 

@@ -37,6 +37,15 @@ public class User {
 	@Column(name = "track", length = 50)
 	private String track;
 
+	@Column(name = "mini_app_onboarding_complete", nullable = false)
+	private boolean miniAppOnboardingComplete;
+
+	@Column(name = "max_score_deficit", nullable = false)
+	private int maxScoreDeficit = 15;
+
+	@Column(name = "preferred_competition_type", length = 30)
+	private String preferredCompetitionType;
+
 	@ManyToMany
 	@JoinTable(
 			name = "user_interest_categories",

@@ -13,6 +13,9 @@ import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaireStep;
 import com.runiversityadmisson.bot.domain.applicant.service.UserService;
 import com.runiversityadmisson.bot.infrastructure.external.max.MaxBotClient;
 import java.util.Map;
+import java.util.Optional;
+import com.runiversityadmisson.bot.domain.applicant.model.exam.Subject;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.SubjectRepository;
 import org.junit.jupiter.api.Test;
 
 class OnboardingConversationTest {
@@ -73,7 +76,7 @@ class OnboardingConversationTest {
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
 
 		new OnboardingConversation(mock(MaxBotClient.class), sessionService, botMessageService,
-				mock(UserService.class), false).start(USER_ID);
+				mock(UserService.class), false, subjects()).start(USER_ID);
 
 		assertThat(session.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
 		assertThat(session.getLanguage()).isEqualTo("ru");
@@ -93,7 +96,7 @@ class OnboardingConversationTest {
 		MaxBotClient maxBotClient = mock(MaxBotClient.class);
 		OnboardingMessenger botMessageService = mock(OnboardingMessenger.class);
 		when(sessionService.getOrCreate(USER_ID)).thenReturn(session);
-		OnboardingConversation service = new OnboardingConversation(maxBotClient, sessionService, botMessageService, mock(UserService.class));
+		OnboardingConversation service = new OnboardingConversation(maxBotClient, sessionService, botMessageService, mock(UserService.class), subjects());
 
 		service.handleCallback(USER_ID, "language-callback", "lang_ru");
 		service.handleCallback(USER_ID, "country-callback", "citizenship_RU");
@@ -148,7 +151,66 @@ class OnboardingConversationTest {
 			BotQuestionnaireStore sessionService,
 			OnboardingMessenger botMessageService,
 			UserService userService) {
-		return new OnboardingConversation(mock(MaxBotClient.class), sessionService, botMessageService, userService);
+		return new OnboardingConversation(mock(MaxBotClient.class), sessionService, botMessageService, userService, subjects());
+	}
+
+	private static SubjectRepository subjects() {
+		SubjectRepository repository = mock(SubjectRepository.class);
+		for (String id : java.util.List.of("math-profile", "russian", "informatics")) {
+			Subject subject = new Subject();
+			subject.setId(id);
+			subject.setMinThreshold(40);
+			when(repository.findById(id)).thenReturn(Optional.of(subject));
+			when(repository.existsById(id)).thenReturn(true);
+		}
+		return repository;
+	}
+
+	@Test
+	void belowMinimumDoesNotSaveOrAdvance() {
+		BotQuestionnaire session = sessionWaitingForScore();
+		BotQuestionnaireStore store = mock(BotQuestionnaireStore.class);
+		OnboardingMessenger messenger = mock(OnboardingMessenger.class);
+		when(store.getOrCreate(USER_ID)).thenReturn(session);
+		service(store, messenger, mock(UserService.class)).handleText(USER_ID, "39");
+		assertThat(session.getEgeScores()).isEmpty();
+		assertThat(session.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_EGE_SCORE);
+		verify(messenger).sendBelowMinimum(USER_ID, "ru", 40);
+		verify(store, never()).save(session);
+	}
+
+	@Test
+	void forgedFinishAndUnknownSubjectCannotBypassOnboarding() {
+		BotQuestionnaire session = sessionWaitingForScore();
+		session.setState(BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
+		BotQuestionnaireStore store = mock(BotQuestionnaireStore.class);
+		when(store.getOrCreate(USER_ID)).thenReturn(session);
+		UserService users = mock(UserService.class);
+		var conversation = service(store, mock(OnboardingMessenger.class), users);
+		conversation.handleCallback(USER_ID, null, "ege_done");
+		conversation.handleCallback(USER_ID, null, "subject_fake");
+		assertThat(session.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_EGE_SUBJECT);
+		org.mockito.Mockito.verifyNoInteractions(users);
+	}
+
+	@Test
+	void finishRequiresCompleteScoresAndPersistsAtBoundary() {
+		BotQuestionnaire session = sessionWaitingForScore();
+		session.setCitizenship("RU");
+		session.setTrack("domestic_equivalent");
+		session.setState(BotQuestionnaireStep.WAITING_FOR_EGE_MORE);
+		session.getEgeScores().put("math-profile", 40);
+		BotQuestionnaireStore store = mock(BotQuestionnaireStore.class);
+		when(store.getOrCreate(USER_ID)).thenReturn(session);
+		UserService users = mock(UserService.class);
+		var conversation = service(store, mock(OnboardingMessenger.class), users);
+		conversation.handleCallback(USER_ID, null, "ege_done");
+		org.mockito.Mockito.verifyNoInteractions(users);
+		session.getEgeScores().put("russian", 40);
+		session.getEgeScores().put("informatics", 40);
+		conversation.handleCallback(USER_ID, null, "ege_done");
+		verify(users).syncFromBot(USER_ID, "ru", "RU", "domestic_equivalent", session.getEgeScores());
+		verify(store).delete(USER_ID);
 	}
 
 	private static BotQuestionnaire sessionWaitingForScore() {

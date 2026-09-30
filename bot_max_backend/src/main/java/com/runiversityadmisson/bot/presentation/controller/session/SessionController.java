@@ -18,6 +18,13 @@ public class SessionController {
 
 	private final SessionProfileService sessionQueryService;
 
+	@org.springframework.web.bind.annotation.PostMapping("/{sessionId}/onboarding/complete")
+	public SessionDraftResponse completeOnboarding(@PathVariable UUID sessionId,
+			@AuthenticationPrincipal UUID principal) {
+		if (!sessionId.equals(principal)) throw new ResourceNotFoundException("Заявка не найдена");
+		return sessionQueryService.completeOnboarding(sessionId);
+	}
+
 	@GetMapping("/{sessionId}")
 	public SessionDraftResponse getSession(
 			@PathVariable UUID sessionId,

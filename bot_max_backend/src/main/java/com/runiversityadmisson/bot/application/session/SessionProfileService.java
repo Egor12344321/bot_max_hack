@@ -42,8 +42,23 @@ public class SessionProfileService {
 				user.getLanguage(),
 				user.getCitizenship(),
 				scores.stream().map(score -> toResponse(score, subjects.get(score.getSubjectId()), user.getLanguage())).toList(),
-				true
+				user.getLanguage() != null && user.getCitizenship() != null && user.getTrack() != null,
+				user.isMiniAppOnboardingComplete(),
+				List.copyOf(user.getDirectionIds()),
+				user.getInterests().stream().map(category -> category.getId()).toList()
 		);
+	}
+
+	/** Пропуск необязательных шагов не очищает ранее введённые интересы и дипломы. */
+	@Transactional
+	public SessionDraftResponse completeOnboarding(UUID sessionId) {
+		User user = userRepository.findById(sessionId)
+				.orElseThrow(() -> new ResourceNotFoundException("Заявка не найдена"));
+		if (user.getLanguage() == null || user.getCitizenship() == null || user.getTrack() == null) {
+			throw new com.runiversityadmisson.bot.presentation.exception.OnboardingRequiredException();
+		}
+		user.setMiniAppOnboardingComplete(true);
+		return getSession(sessionId);
 	}
 
 	private EgeScoreResponse toResponse(EgeScore score, Subject subject, String language) {

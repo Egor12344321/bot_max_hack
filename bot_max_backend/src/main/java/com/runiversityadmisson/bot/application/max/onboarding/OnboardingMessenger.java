@@ -4,6 +4,10 @@ import com.runiversityadmisson.bot.infrastructure.external.max.MaxBotClient;
 import com.runiversityadmisson.bot.infrastructure.external.max.dto.NewMessageBody;
 import java.util.List;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Comparator;
+import com.runiversityadmisson.bot.domain.applicant.model.exam.Subject;
+import com.runiversityadmisson.bot.domain.applicant.ports.exam.SubjectRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -19,13 +23,15 @@ public class OnboardingMessenger {
     private final MaxBotClient maxBotClient;
     private final MessageSource messageSource;
     private final String webApp;
+    private final SubjectRepository subjects;
 
     public OnboardingMessenger(MaxBotClient maxBotClient,
                              MessageSource messageSource,
-                             @Value("${max.bot.web-app}") String webApp) {
+                             @Value("${max.bot.web-app}") String webApp, SubjectRepository subjects) {
         this.maxBotClient = maxBotClient;
         this.messageSource = messageSource;
         this.webApp = webApp;
+        this.subjects = subjects;
     }
 
     public void sendLanguageQuestion(Long userId) {
@@ -64,27 +70,30 @@ public class OnboardingMessenger {
     }
 
     public void sendSubjectQuestion(Long userId, String lang) {
+        List<NewMessageBody.Button> buttons = subjects.findAll().stream()
+                .sorted(Comparator.comparing(Subject::getId))
+                .map(subject -> {
+                    String name = "kk".equals(lang) ? subject.getNameKk()
+                            : "ky".equals(lang) ? subject.getNameKy() : subject.getNameRu();
+                    return NewMessageBody.Button.callback(name == null || name.isBlank() ? subject.getNameRu() : name,
+                            "subject_" + subject.getId());
+                }).toList();
+        List<List<NewMessageBody.Button>> rows = new ArrayList<>();
+        for (int i = 0; i < buttons.size(); i += 2) rows.add(buttons.subList(i, Math.min(i + 2, buttons.size())));
         maxBotClient.sendMessage(userId, NewMessageBody.builder()
                 .text(msg("ege.ask.subject", lang))
-                .attachment(NewMessageBody.Attachment.inlineKeyboard(List.of(
-                        List.of(
-                                NewMessageBody.Button.callback(msg("subject.russian", lang), "subject_russian"),
-                                NewMessageBody.Button.callback(msg("subject.math-profile", lang), "subject_math-profile")
-                        ),
-                        List.of(
-                                NewMessageBody.Button.callback(msg("subject.informatics", lang), "subject_informatics"),
-                                NewMessageBody.Button.callback(msg("subject.physics", lang), "subject_physics")
-                        ),
-                        List.of(
-                                NewMessageBody.Button.callback(msg("subject.chemistry", lang), "subject_chemistry"),
-                                NewMessageBody.Button.callback(msg("subject.biology", lang), "subject_biology")
-                        ),
-                        List.of(
-                                NewMessageBody.Button.callback(msg("subject.social-studies", lang), "subject_social-studies"),
-                                NewMessageBody.Button.callback(msg("subject.history", lang), "subject_history")
-                        )
-                )))
+                .attachment(NewMessageBody.Attachment.inlineKeyboard(rows))
                 .build());
+    }
+
+    public void sendBelowMinimum(Long userId, String lang, int minimum) {
+        maxBotClient.sendMessage(userId, NewMessageBody.builder()
+                .text(messageSource.getMessage("ege.score.below-minimum", new Object[]{minimum},
+                        Locale.forLanguageTag(lang == null ? "ru" : lang))).build());
+    }
+
+    public void sendIncompleteEge(Long userId, String lang) {
+        maxBotClient.sendMessage(userId, NewMessageBody.builder().text(msg("ege.incomplete", lang)).build());
     }
 
     public void sendMoreSubjectsQuestion(Long userId, String lang) {

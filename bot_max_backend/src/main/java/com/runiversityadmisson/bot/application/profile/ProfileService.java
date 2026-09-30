@@ -90,7 +90,10 @@ public class ProfileService {
 				count(byComparison, "above_previous"),
 				count(byComparison, "near_previous"),
 				count(byComparison, "below_previous"),
-				count(byComparison, "insufficient_data"));
+				count(byComparison, "insufficient_data"),
+				(int) options.stream().filter(option -> "reserve".equals(option.riskStatus())).count(),
+				(int) options.stream().filter(option -> "real".equals(option.riskStatus())).count(),
+				(int) options.stream().filter(option -> "risk".equals(option.riskStatus())).count());
 	}
 
 	static String advice(boolean noEgeScores, boolean noDirections, ProfileProgramsResponse programs) {
@@ -107,12 +110,12 @@ public class ProfileService {
 			return "Программ с доступным БВИ: " + programs.bvi() + ". Использовать БВИ можно только в одном вузе "
 					+ "и на одном направлении, поэтому выбери самый сильный вариант.";
 		}
-		if (programs.belowPrevious() > programs.abovePrevious() + programs.nearPrevious()) {
+		if (programs.riskCount() > programs.reserveCount() + programs.realCount()) {
 			return "Большинство программ ниже прошлогоднего проходного. Добавь в план программы с запасом, "
 					+ "чтобы подстраховаться.";
 		}
-		if (programs.abovePrevious() > 0) {
-			return "Программ с запасом: " + programs.abovePrevious() + ". Оставь их в плане как страховку, "
+		if (programs.reserveCount() > 0) {
+			return "Программ с запасом: " + programs.reserveCount() + ". Оставь их в плане как страховку, "
 					+ "а более сильные вузы ставь выше по приоритету.";
 		}
 		return "Подборка готова. Открой её, чтобы собрать план поступления.";

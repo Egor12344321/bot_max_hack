@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.runiversityadmisson.bot.application.dto.auth.ExchangeResponse;
 import com.runiversityadmisson.bot.domain.applicant.model.profile.User;
 import com.runiversityadmisson.bot.domain.applicant.ports.profile.UserRepository;
-import com.runiversityadmisson.bot.presentation.exception.ResourceNotFoundException;
+import com.runiversityadmisson.bot.presentation.exception.OnboardingRequiredException;
 import com.runiversityadmisson.bot.presentation.security.InitDataValidator;
 import com.runiversityadmisson.bot.presentation.security.JwtService;
 import java.time.LocalDateTime;
@@ -31,6 +31,7 @@ class AuthTokenServiceTest {
 		user.setMaxUserId(42L);
 		user.setLanguage("kk");
 		user.setCitizenship("KZ");
+		user.setTrack("domestic_equivalent");
 		user.setCreatedAt(createdAt);
 
 		when(initDataValidator.validateAndExtractUserId("init-data")).thenReturn(42L);
@@ -61,6 +62,7 @@ class AuthTokenServiceTest {
 		AuthTokenService exchangeService = new AuthTokenService(initDataValidator, jwtService, userRepository);
 
 		assertThatThrownBy(() -> exchangeService.exchange("init-data"))
-				.isInstanceOf(ResourceNotFoundException.class);
+				.isInstanceOf(OnboardingRequiredException.class);
+		org.mockito.Mockito.verifyNoInteractions(jwtService);
 	}
 }

@@ -119,6 +119,13 @@ public class QuestionnaireService {
 		if (subjects.size() != scoresBySubject.size()) {
 			throw new BadRequestException("Указан неизвестный предмет ЕГЭ");
 		}
+		for (Subject subject : subjects) {
+			Integer score = scoresBySubject.get(subject.getId()).score();
+			if (score == null || score < subject.getMinThreshold() || score > 100) {
+				throw new BadRequestException(subject.getNameRu() + ": допустимый балл от "
+						+ subject.getMinThreshold() + " до 100");
+			}
+		}
 
 		egeScoreRepository.deleteByUserId(sessionId);
 		for (EgeScoreInput input : inputs) {
@@ -153,7 +160,7 @@ public class QuestionnaireService {
 		List<EgeScoreResponse> result = scores.stream()
 				.map(score -> toEgeScoreResponse(score, subjects.get(score.getSubjectId()), language))
 				.toList();
-		return new EgeScoresSubmissionResponse(result, result.stream().allMatch(EgeScoreResponse::passed));
+		return new EgeScoresSubmissionResponse(result, !result.isEmpty() && result.stream().allMatch(EgeScoreResponse::passed));
 	}
 
 	private User getUser(UUID sessionId) {

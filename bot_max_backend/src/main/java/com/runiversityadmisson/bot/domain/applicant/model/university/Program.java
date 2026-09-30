@@ -56,6 +56,11 @@ public class Program {
 	private String passingScoreNote;
 
 	@ElementCollection
+	@CollectionTable(name = "program_competitions", joinColumns = @JoinColumn(name = "program_id"))
+	@jakarta.persistence.MapKeyColumn(name = "competition_type")
+	private java.util.Map<String, ProgramCompetition> competitions = new java.util.LinkedHashMap<>();
+
+	@ElementCollection
 	@CollectionTable(name = "program_subjects", joinColumns = @JoinColumn(name = "program_id"))
 	private List<ProgramSubject> subjects = new ArrayList<>();
 

@@ -28,6 +28,7 @@ class SessionProfileServiceTest {
 		user.setId(userId);
 		user.setLanguage("kk");
 		user.setCitizenship("KZ");
+		user.setTrack("domestic_equivalent");
 		EgeScore score = new EgeScore();
 		score.setSubjectId("math-profile");
 		score.setScore(80);
