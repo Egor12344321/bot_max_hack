@@ -2,6 +2,7 @@ package com.runiversityadmisson.bot.application.max.onboarding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,7 @@ import com.runiversityadmisson.bot.application.max.dialog.BotQuestionnaireStep;
 import com.runiversityadmisson.bot.domain.applicant.service.UserService;
 import com.runiversityadmisson.bot.infrastructure.external.max.MaxBotClient;
 import java.util.Map;
+import org.mockito.InOrder;
 import java.util.Optional;
 import com.runiversityadmisson.bot.domain.applicant.model.exam.Subject;
 import com.runiversityadmisson.bot.domain.applicant.ports.exam.SubjectRepository;
@@ -143,6 +145,26 @@ class OnboardingConversationTest {
 
 		verify(sessionService).delete(USER_ID);
 		verify(userService).deleteByMaxUserId(USER_ID);
+		assertThat(fresh.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_LANGUAGE);
+		verify(botMessageService).sendLanguageQuestion(USER_ID);
+	}
+
+	@Test
+	void botStartResetsUnfinishedQuestionnaireButKeepsSavedApplication() {
+		BotQuestionnaire fresh = new BotQuestionnaire();
+		fresh.setUserId(USER_ID);
+		BotQuestionnaireStore sessionService = mock(BotQuestionnaireStore.class);
+		OnboardingMessenger botMessageService = mock(OnboardingMessenger.class);
+		UserService userService = mock(UserService.class);
+		// После удаления из Redis store отдаёт новую анкету на шаге NEW.
+		when(sessionService.getOrCreate(USER_ID)).thenReturn(fresh);
+
+		service(sessionService, botMessageService, userService).restartFromBotStart(USER_ID);
+
+		InOrder order = inOrder(sessionService);
+		order.verify(sessionService).delete(USER_ID);
+		order.verify(sessionService).getOrCreate(USER_ID);
+		verify(userService, never()).deleteByMaxUserId(USER_ID);
 		assertThat(fresh.getState()).isEqualTo(BotQuestionnaireStep.WAITING_FOR_LANGUAGE);
 		verify(botMessageService).sendLanguageQuestion(USER_ID);
 	}
