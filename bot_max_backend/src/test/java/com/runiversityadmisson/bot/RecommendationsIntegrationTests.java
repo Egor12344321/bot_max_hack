@@ -165,17 +165,29 @@ class RecommendationsIntegrationTests {
 	}
 
 	@Test
-	void svoUsesSeparateCompetitionWithoutBorrowingGeneralPassingScore() {
+	void svoUsesDemoPassingScoreOfSeparateCompetition() {
 		achievementPrivilegeService.setPrivileges(userId, List.of("svo_participant"));
 		var page = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100);
 		assertThat(page.total()).isEqualTo(10);
 		assertThat(page.items()).allSatisfy(option -> {
 			assertThat(option.competitionType()).isEqualTo("separate_quota");
-			assertThat(option.passingScorePreviousYear()).isNull();
-			assertThat(option.scoreDifference()).isNull();
 			assertThat(option.seats()).isNull();
-			assertThat(option.comparison()).isEqualTo("insufficient_data");
 			assertThat(option.availableCompetitionTypes()).contains("general", "separate_quota");
+			Integer general = programs.findById(option.programId()).orElseThrow().getPassingScorePreviousYear();
+			if (general == null) {
+				assertThat(option.passingScorePreviousYear()).isNull();
+				assertThat(option.comparison()).isEqualTo("insufficient_data");
+			} else {
+				// Демо-проходной квоты: 88% проходного общего конкурса, а не он сам.
+				assertThat(option.passingScorePreviousYear()).isEqualTo(Math.round(general * 0.88f));
+				assertThat(option.scoreDifference()).isEqualTo(option.totalScore() - option.passingScorePreviousYear());
+				assertThat(option.dataSource()).isEqualTo("demo");
+				assertThat(option.reasons()).anyMatch(reason -> reason.startsWith("Проходной по квоте демонстрационный"));
+			}
+		});
+		assertThat(page.items()).anySatisfy(option -> {
+			assertThat(option.programId()).isEqualTo("stankin-090304");
+			assertThat(option.passingScorePreviousYear()).isEqualTo(231);
 		});
 		settings.save(userId, 15, "general");
 		assertThat(recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items())
@@ -189,8 +201,8 @@ class RecommendationsIntegrationTests {
 		quota.setSeats(7);
 		quota.setPassingScore(240);
 		quota.setPreviousYear(2025);
-		var option = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items().getFirst();
-		assertThat(option.programId()).isEqualTo("stankin-090304");
+		var option = recommendationService.getRecommendations(userId, SOFTWARE_ENGINEERING, 0, 100).items().stream()
+				.filter(item -> item.programId().equals("stankin-090304")).findFirst().orElseThrow();
 		assertThat(option.seats()).isEqualTo(7);
 		assertThat(option.scoreDifference()).isEqualTo(20);
 		quota.setSeats(0);
