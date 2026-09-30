@@ -55,6 +55,22 @@
 4) PostgreSQL - БД для долговременного хранения данных
 5) Redis - для хранения статуса текущей сессии, позже можно добавить кеширование результатов для пользователя
 
+```text
+MAX
+│
+└── мини-приложение/чат-бот
+        │
+        ▼
+      nginx
+        │
+        ▼
+      Backend
+     │       │
+     ▼       ▼
+PostgreSQL  Redis
+```
+
+
 ## Запуск через Docker
 
 ```sh
@@ -81,13 +97,14 @@ docker compose -f docker-compose.local.yml up -d --build
 | REDIS_PORT | порт Redis | 6379         |
 
 ## Используемые порты
-| Сервис | Внутренний порт | Наружу |
-|---|---|---|
-| backend | 8080 | не проброшен |
-| frontend | 80 | не проброшен |
-| postgres | 5432 | не проброшен |
-| redis | 6379 | не проброшен |
-| nginx | 80, 443 | проброшены |
+| Сервис | Внутренний порт        | Наружу |
+|---|------------------------|---|
+| backend | 8080                   | не проброшен |
+| frontend | 80                     | не проброшен |
+| postgres | 5432                   | не проброшен |
+| redis | 6379                   | не проброшен |
+| nginx | 80 - HTTP, 443 - HTTPS | проброшены |
+Локально все порты проброшены
 
 
 ## Зависимости
@@ -128,7 +145,7 @@ docker compose -f docker-compose.local.yml down
 docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml down -v
 ```
-** Для перезапуска бота используйте /restart
+** Для перезапуска бота используйте /restart (в MAX)
 
 
 ## Известные ограничения
