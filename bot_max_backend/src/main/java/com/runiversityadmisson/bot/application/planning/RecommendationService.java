@@ -224,6 +224,7 @@ public class RecommendationService {
 		if (!"general".equals(type)) {
 			reasons.add("Выбрана квота по заявленной льготе. Право и документы подтверждает приёмная комиссия; общий конкурс также доступен.");
 			if (item.candidate().passingScore() == null) reasons.add("Проходной по квоте неизвестен; проходной общего конкурса не используется");
+			else if ("demo".equals(competition.getDataSource())) reasons.add("Проходной по квоте демонстрационный: данные вузов по квотам пока не загружены");
 			reasons.add("Освобождение от испытаний по отдельным основаниям не назначается автоматически; требуется проверка основания");
 		}
 		result.missingSubjects().forEach(subject -> reasons.add("Нет результата ЕГЭ: " + subject));
