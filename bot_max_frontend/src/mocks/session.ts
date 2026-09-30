@@ -2,7 +2,6 @@ import type { SessionDraft } from "@/api/types/session";
 
 export const mockSession: SessionDraft = {
   id: "mock-session-1",
-  language: "ru",
   countryCode: "RU",
 
   egeScores: [

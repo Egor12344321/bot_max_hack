@@ -4,8 +4,6 @@ import { Typography } from "@maxhub/max-ui";
 
 import { useNavigate } from "react-router-dom";
 
-import { useTranslation } from "react-i18next";
-
 import type { Achievement } from "@/api/types/onboarding";
 
 import { getAchievements, saveAchievements } from "@/api/onboardingApi";
@@ -20,9 +18,7 @@ import styles from "./AchievementsPage.module.css";
 export function AchievementsPage() {
   const navigate = useNavigate();
 
-  const { t } = useTranslation();
-
-  const sessionId = useAppSelector((state) => state.session.sessionId);
+const sessionId = useAppSelector((state) => state.session.sessionId);
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
 
@@ -49,14 +45,14 @@ export function AchievementsPage() {
         setAchievements(data);
       } catch {
         setLoadFailed(true);
-        setError(t("onboarding.achievements.loadError"));
+        setError("Не удалось загрузить достижения");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadAchievements();
-  }, [t]);
+  }, []);
 
   function handleSelect(achievementId: string) {
     if (selectedIds.includes(achievementId)) {
@@ -81,7 +77,7 @@ export function AchievementsPage() {
 
       navigate("/onboarding/privileges");
     } catch {
-      setError(t("onboarding.achievements.saveError"));
+      setError("Не удалось сохранить достижения");
     } finally {
       setIsSaving(false);
     }
@@ -91,9 +87,9 @@ export function AchievementsPage() {
     <OnboardingLayout
       step={3}
       totalSteps={4}
-      title={t("onboarding.achievements.title")}
-      description={t("onboarding.achievements.description")}
-      buttonText={t("onboarding.achievements.continue")}
+      title={"Твои достижения"}
+      description={"Отметь, что у тебя есть. Баллы за достижения отличаются в разных вузах."}
+      buttonText={"Далее — льготы"}
       buttonLoading={isSaving}
       buttonDisabled={isLoading || loadFailed}
       onButtonClick={handleContinue}
@@ -103,7 +99,7 @@ export function AchievementsPage() {
     >
       {isLoading && (
         <div className={styles.state}>
-          <Typography.Body>{t("common.loading")}</Typography.Body>
+          <Typography.Body>{"Загрузка..."}</Typography.Body>
         </div>
       )}
 
@@ -113,7 +109,7 @@ export function AchievementsPage() {
         <>
           <div className={styles.card}>
             <div className={styles.cardTitle}>
-              {t("onboarding.achievements.cardTitle")}
+              {"Индивидуальные достижения"}
             </div>
 
             {achievements.map((achievement) => {
@@ -154,7 +150,7 @@ export function AchievementsPage() {
           <div className={styles.info}>
 
 
-            <span>{t("onboarding.achievements.info")}</span>
+            <span>{"Точное количество дополнительных баллов покажем отдельно для каждого вуза."}</span>
           </div>
         </>
       )}

@@ -13,13 +13,6 @@ export interface MockStorageData {
   directionPriorityIds: Record<string, string[]>;
   strategyReport: StrategyFinalizeResponse | null;
 
-  deadlineReminders: Record<
-    string,
-    {
-      remind3Days: boolean;
-      remind24Hours: boolean;
-    }
-  >;
 }
 
 const defaultData: MockStorageData = {
@@ -33,7 +26,6 @@ const defaultData: MockStorageData = {
   directionPriorityIds: {},
   strategyReport: null,
 
-  deadlineReminders: {},
 };
 
 export function getMockStorage(): MockStorageData {

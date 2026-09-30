@@ -2,7 +2,6 @@ import type { Profile } from "@/api/types/profile";
 import type { Subject } from "@/api/types/session";
 
 export const mockProfile: Profile = {
-  language: "ru",
   countryCode: "RU",
 
   egeScores: [],

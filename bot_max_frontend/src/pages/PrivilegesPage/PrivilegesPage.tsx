@@ -4,8 +4,6 @@ import { Typography } from "@maxhub/max-ui";
 
 import { useNavigate } from "react-router-dom";
 
-import { useTranslation } from "react-i18next";
-
 import type { PrivilegeCategory } from "@/api/types/onboarding";
 
 import { getPrivileges, savePrivileges } from "@/api/onboardingApi";
@@ -20,9 +18,7 @@ import styles from "./PrivilegesPage.module.css";
 export function PrivilegesPage() {
   const navigate = useNavigate();
 
-  const { t } = useTranslation();
-
-  const sessionId = useAppSelector((state) => state.session.sessionId);
+const sessionId = useAppSelector((state) => state.session.sessionId);
 
   const [privileges, setPrivileges] = useState<PrivilegeCategory[]>([]);
 
@@ -47,14 +43,14 @@ export function PrivilegesPage() {
         setPrivileges(data);
       } catch {
         setLoadFailed(true);
-        setError(t("onboarding.privileges.loadError"));
+        setError("Не удалось загрузить категории");
       } finally {
         setIsLoading(false);
       }
     }
 
     loadPrivileges();
-  }, [t]);
+  }, []);
 
   function handleSelect(privilegeId: string) {
     if (selectedIds.includes(privilegeId)) {
@@ -79,7 +75,7 @@ export function PrivilegesPage() {
 
       navigate("/universities");
     } catch {
-      setError(t("onboarding.privileges.saveError"));
+      setError("Не удалось сохранить данные");
     } finally {
       setIsSaving(false);
     }
@@ -89,9 +85,9 @@ export function PrivilegesPage() {
     <OnboardingLayout
       step={4}
       totalSteps={4}
-      title={t("onboarding.privileges.title")}
-      description={t("onboarding.privileges.description")}
-      buttonText={t("onboarding.privileges.calculate")}
+      title={"Есть основания для льготы?"}
+      description={"Отметь всё, что относится к тебе. Подходящий вариант поступления определим автоматически."}
+      buttonText={"Рассчитать шансы"}
       buttonLoading={isSaving}
       buttonDisabled={isLoading || loadFailed}
       onButtonClick={handleContinue}
@@ -99,7 +95,7 @@ export function PrivilegesPage() {
     >
       {isLoading && (
         <div className={styles.state}>
-          <Typography.Body>{t("common.loading")}</Typography.Body>
+          <Typography.Body>{"Загрузка..."}</Typography.Body>
         </div>
       )}
 
@@ -109,7 +105,7 @@ export function PrivilegesPage() {
         <>
           <div className={styles.card}>
             <div className={styles.cardTitle}>
-              {t("onboarding.privileges.cardTitle")}
+              {"Особый статус"}
             </div>
 
             {privileges.map((privilege) => {
@@ -144,10 +140,8 @@ export function PrivilegesPage() {
 
             <span>
               {selectedIds.length === 0
-                ? t("onboarding.privileges.noneSelected")
-                : t("onboarding.privileges.selected", {
-                    count: selectedIds.length,
-                  })}
+                ? "Ничего не выбрано — можно продолжить без льгот"
+                : `Выбрано: ${selectedIds.length}`}
             </span>
           </div>
         </>

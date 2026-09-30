@@ -1,6 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-import type { LanguageCode } from "@/api/types/localization";
 import type { EgeScoreResult } from "@/api/types/session";
 import { getEgeScoreSummary } from "@/utils/egeScore";
 import type { ErrorDetails } from "@/utils/appError";
@@ -9,7 +8,6 @@ interface SessionState {
   sessionId: string | null;
   accessToken: string | null;
 
-  language: LanguageCode;
 
   isInitialized: boolean;
   initializationError: boolean;
@@ -22,7 +20,6 @@ const initialState: SessionState = {
   sessionId: null,
   accessToken: null,
 
-  language: "ru",
 
   isInitialized: false,
   initializationError: false,
@@ -34,7 +31,6 @@ const initialState: SessionState = {
 interface SetSessionPayload {
   sessionId: string;
   accessToken: string;
-  language: LanguageCode;
   isCompleteFromBot: boolean;
   egeScores: EgeScoreResult[];
 }
@@ -48,16 +44,12 @@ const sessionSlice = createSlice({
     setSession(state, action: PayloadAction<SetSessionPayload>) {
       state.sessionId = action.payload.sessionId;
       state.accessToken = action.payload.accessToken;
-      state.language = action.payload.language;
       state.isCompleteFromBot = action.payload.isCompleteFromBot;
       state.egeScores = action.payload.egeScores;
       state.initializationError = false;
       state.initializationErrorDetails = null;
     },
 
-    setLanguage(state, action: PayloadAction<LanguageCode>) {
-      state.language = action.payload;
-    },
 
     setEgeScores(state, action: PayloadAction<EgeScoreResult[]>) {
       state.egeScores = action.payload;
@@ -81,7 +73,6 @@ const sessionSlice = createSlice({
 
 export const {
   setSession,
-  setLanguage,
   setEgeScores,
   setInitialized,
   clearSession,

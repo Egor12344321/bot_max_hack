@@ -44,8 +44,6 @@ export function AppRouter() {
 
         <Route path="/priorities" element={<Navigate to="/universities?view=plan" replace />} />
 
-        <Route path="/calendar" element={<Navigate to="/universities?view=plan" replace />} />
-
         <Route path="/strategy/report" element={<Navigate to="/universities?view=plan" replace />} />
 
         <Route

@@ -1,9 +1,7 @@
-import type { LanguageCode } from "@/api/types/localization";
 
 export interface Session {
   id: string;
   platform: string;
-  language: LanguageCode;
   countryCode: string | null;
   createdAt: string;
 }
@@ -55,7 +53,6 @@ export interface EgeScoresSubmission {
 
 export interface SessionDraft {
   id: string;
-  language: LanguageCode;
   countryCode: string | null;
   egeScores: EgeScoreResult[];
   isCompleteFromBot: boolean;

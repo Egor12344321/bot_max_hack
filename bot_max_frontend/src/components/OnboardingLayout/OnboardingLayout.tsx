@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 
 import { Button, Container, Panel, Typography } from "@maxhub/max-ui";
 
-import { useTranslation } from "react-i18next";
-
 import styles from "./OnboardingLayout.module.css";
 
 interface OnboardingLayoutProps {
@@ -36,18 +34,13 @@ export function OnboardingLayout({
   onButtonClick,
   onBack,
 }: OnboardingLayoutProps) {
-  const { t } = useTranslation();
-
-  return (
+return (
     <Panel mode="secondary" className={styles.page}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <div className={styles.headerTop}>
             <Typography.Body>
-              {t("common.step", {
-                step,
-                total: totalSteps,
-              })}
+              {`Шаг ${step} из ${totalSteps}`}
             </Typography.Body>
 
             {onBack && (
@@ -56,7 +49,7 @@ export function OnboardingLayout({
                 className={styles.backButton}
                 onClick={onBack}
               >
-                ← {t("common.back")}
+                ← {"Назад"}
               </button>
             )}
           </div>
@@ -99,7 +92,7 @@ export function OnboardingLayout({
             disabled={buttonDisabled || buttonLoading}
             onClick={onButtonClick}
           >
-            {buttonLoading ? t("common.saving") : buttonText}
+            {buttonLoading ? "Сохраняем..." : buttonText}
           </Button>
         </div>
       </footer>

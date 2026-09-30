@@ -214,7 +214,7 @@ test("session state exposes exam scores, incomplete state and initialization fai
   const slice = load("src/store/slices/sessionSlice.ts");
   const session = load("src/mocks/session.ts").mockSession;
   let state = slice.default(undefined, { type: "init" });
-  state = slice.default(state, slice.setSession({ sessionId: session.id, accessToken: "token", language: "ru", egeScores: session.egeScores, isCompleteFromBot: false }));
+  state = slice.default(state, slice.setSession({ sessionId: session.id, accessToken: "token", egeScores: session.egeScores, isCompleteFromBot: false }));
   assert.equal(slice.selectEgeTotal({ session: state }), 275);
   assert.equal(state.isCompleteFromBot, false);
   state = slice.default(state, slice.initializationFailed());
@@ -291,12 +291,6 @@ test("strategy report is a saved snapshot, not a live list", async () => {
   assert.deepEqual(await api.getMockStrategyReport(), report);
 });
 
-test("all locales have matching translation keys", () => {
-  const keys = (obj) => Object.entries(obj).flatMap(([key, value]) => typeof value === "object" ? keys(value).map((child) => `${key}.${child}`) : [key]).sort();
-  const ru = keys(load("src/i18n/locales/ru.ts").ru);
-  assert.deepEqual(keys(load("src/i18n/locales/kk.ts").kk), ru);
-  assert.deepEqual(keys(load("src/i18n/locales/ky.ts").ky), ru);
-});
 
 test("onboarding selection survives reload, respects empty choices and isolates sessions", () => {
   const storage = load("src/mocks/mockStorage.ts");

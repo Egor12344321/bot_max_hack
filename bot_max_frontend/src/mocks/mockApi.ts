@@ -9,7 +9,6 @@ import type { Profile } from "@/api/types/profile";
 
 import type { ExchangeAuthResponse } from "@/api/types/auth";
 
-import type { DeadlineEvent } from "@/api/types/deadlines";
 
 import type { PriorityListItem } from "@/api/types/priorities";
 
@@ -35,7 +34,6 @@ import {
 
 import { finalizeMockStrategy, getMockStrategyReport } from "@/mocks/strategy";
 
-import { mockDeadlines } from "@/mocks/deadlines";
 
 import { getMockStorage, saveMockStorage } from "@/mocks/mockStorage";
 import { calculateMockDetail, calculateMockUniversities } from "@/mocks/calculations";
@@ -348,55 +346,6 @@ export async function saveMockDirectionPriorities(
   return calculateMockDetail(universityId, storage);
 }
 
-export async function getMockDeadlines(): Promise<DeadlineEvent[]> {
-  await delay();
-
-  const storage = getMockStorage();
-
-  return mockDeadlines.map((deadline) => {
-    const savedReminder = storage.deadlineReminders[deadline.id];
-
-    if (!savedReminder) {
-      return deadline;
-    }
-
-    return {
-      ...deadline,
-      remind3Days: savedReminder.remind3Days,
-      remind24Hours: savedReminder.remind24Hours,
-    };
-  });
-}
-
-export async function saveMockDeadlineReminders(
-  eventId: string,
-  remind3Days: boolean,
-  remind24Hours: boolean,
-): Promise<DeadlineEvent> {
-  await delay();
-
-  const storage = getMockStorage();
-
-  storage.deadlineReminders[eventId] = {
-    remind3Days,
-    remind24Hours,
-  };
-
-  saveMockStorage(storage);
-
-  const deadline = mockDeadlines.find((item) => item.id === eventId);
-
-  if (!deadline) {
-    throw new Error("Deadline not found");
-  }
-
-  return {
-    ...deadline,
-    remind3Days,
-    remind24Hours,
-  };
-}
-
 export { finalizeMockStrategy, getMockStrategyReport };
 
 export async function exchangeMockAuth(): Promise<ExchangeAuthResponse> {
@@ -410,7 +359,6 @@ export async function exchangeMockAuth(): Promise<ExchangeAuthResponse> {
     session: {
       id: mockSession.id,
       platform: "max",
-      language: mockSession.language,
       countryCode: mockSession.countryCode,
       createdAt: new Date().toISOString(),
     },

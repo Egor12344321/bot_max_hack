@@ -60,12 +60,17 @@ function RecommendationGroup({
   );
   const { data, error, loading, retry } = useRemote(loader);
   return (
-    <section className={ui.stack}>
-      <p className={ui.muted}>Приоритет направления: {priority}</p>
-      <h2>
+    <section className={ui.recommendationGroup}>
+      <header className={ui.directionHeader}>
+        <span className={ui.priorityNumber} aria-label={`Приоритет направления: ${priority}`}>{priority}</span>
+        <div>
+          <span className={ui.directionLabel}>Приоритет направления</span>
+          <h2>
         {data?.items[0]?.direction.code ?? direction.code}{" "}
         {data?.items[0]?.direction.name ?? direction.name}
-      </h2>
+          </h2>
+        </div>
+      </header>
       {loading && <p role="status">Подбираем варианты…</p>}
       {error !== undefined && <ApiError error={error} retry={retry} />}
       {data && (
@@ -302,12 +307,12 @@ function PlanWorkspace({
           План · {draft.composition.universities.length}/5 вузов
         </button>
       </div>
-      <div className={ui.actions}>
+      <nav className={ui.profileLinks} aria-label="Данные для подбора">
         <Link to="/onboarding/interests">Направления</Link>
         <Link to="/onboarding/olympiads">Олимпиады</Link>
-        <Link to="/onboarding/achievements">ИД</Link>
+        <Link to="/onboarding/achievements">Достижения</Link>
         <Link to="/onboarding/privileges">Льготы</Link>
-      </div>
+      </nav>
       {dirty && (
         <p className={ui.notice}>Есть несохранённые изменения плана.</p>
       )}
@@ -406,8 +411,9 @@ function PlanWorkspace({
           <p className={ui.muted}>
             До 5 вузов и до 5 различных направлений в каждом. Порядок строк задаёт приоритет. Нажмите на программу, чтобы изменить её позицию или посмотреть условия.
           </p>
-          <details className={ui.card}>
+          <details className={ui.autoPlan}>
             <summary className={ui.autoSummary}>Автоплан · собрать или дополнить</summary>
+            <div className={ui.autoContent}>
             <p className={ui.muted}>
               Соберёт до 5 вузов и до 5 направлений в каждом по выбранным
               направлениям и вашим баллам. Сначала идут более конкурентные
@@ -452,6 +458,7 @@ function PlanWorkspace({
                 {warning}
               </p>
             ))}
+            </div>
           </details>
           {!draft.composition.universities.length && (
             <p className={ui.notice}>

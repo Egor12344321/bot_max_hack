@@ -1,12 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
 
-import { useTranslation } from "react-i18next";
-
 import styles from "./BottomNavigation.module.css";
 
 export function BottomNavigation() {
-  const { t } = useTranslation();
-  const location = useLocation();
+const location = useLocation();
   const planActive =
     location.pathname === "/universities" &&
     new URLSearchParams(location.search).get("view") === "plan";
@@ -21,7 +18,7 @@ export function BottomNavigation() {
           }
         >
 
-          <span className={styles.label}>{t("profile.title")}</span>
+          <span className={styles.label}>{"Профиль"}</span>
         </NavLink>
 
         <NavLink

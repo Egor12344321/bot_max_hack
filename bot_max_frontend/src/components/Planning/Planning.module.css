@@ -5,7 +5,8 @@
 .page {
   padding: 16px;
   display: grid;
-  gap: 20px;
+  gap: 16px;
+  min-width: 0;
 }
 .card {
   padding: 16px;
@@ -22,6 +23,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .actions {
   display: flex;
@@ -47,6 +50,9 @@
   line-height: 1.5;
 }
 .input {
+  display: block;
+  min-height: 44px;
+  line-height: 1.4;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -58,6 +64,9 @@
   font: inherit;
 }
 .button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   padding: 10px 14px;
   border: 1px solid var(--app-border);
   border-radius: 12px;
@@ -89,13 +98,17 @@
 .label {
   display: grid;
   gap: 6px;
+  min-width: 0;
+  line-height: 1.5;
 }
 .check {
   display: flex;
   gap: 10px;
   align-items: flex-start;
   cursor: pointer;
+  min-width: 0;
 }
+.check > span { min-width: 0; overflow-wrap: anywhere; }
 .check input {
   margin-top: 4px;
   width: 18px;
@@ -229,4 +242,71 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.page h1, .page h2, .page p, .card p { margin: 0; }
+.page h2 { font-size: 17px; line-height: 1.4; font-weight: 600; }
+.page > *, .stack > *, .actions > * { min-width: 0; }
+.autoPlan {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-card);
+}
+.autoContent {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding-top: 16px;
+}
+.autoContent .actions { align-items: stretch; }
+.autoContent .button { flex: 1 1 160px; }
+.profileLinks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-subtle);
+}
+.profileLinks a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--app-text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--app-card);
+}
+.profileLinks a::after { content: "›"; color: var(--app-muted); margin-left: 6px; }
+.profileLinks a:hover { color: var(--app-accent); }
+.profileLinks a:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 1px; }
+.recommendationGroup { display: grid; gap: 10px; min-width: 0; }
+.recommendationGroup + .recommendationGroup { margin-top: 8px; }
+.directionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+.directionHeader > div { min-width: 0; }
+.directionHeader h2 { margin-top: 3px; overflow-wrap: anywhere; }
+.directionLabel { color: var(--app-muted); font-size: 12px; line-height: 1.4; }
+.priorityNumber {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  height: 30px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-card);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }

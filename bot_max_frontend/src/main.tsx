@@ -7,7 +7,7 @@ import "@/styles/reset.css";
 import "@/styles/variables.css";
 import "@/styles/globals.css";
 
-import "@/i18n/i18n";
+
 
 import { App } from "@/app/App";
 import { AppProviders } from "@/app/providers";

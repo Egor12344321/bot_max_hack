@@ -1,4 +1,3 @@
-import type { LanguageCode } from "@/api/types/localization";
 import type { InterestCategory } from "@/api/types/onboarding";
 import type { SavedDiploma, StudyDirection } from "@/api/types/planning";
 import type { EgeScoreResult } from "@/api/types/session";
@@ -18,7 +17,6 @@ export interface ProfilePrograms {
 
 /** GET /sessions/{id}/profile. Имя пользователя берётся из MAX на клиенте. */
 export interface Profile {
-  language: LanguageCode | null;
   countryCode: string | null;
   egeScores: EgeScoreResult[];
   egeTotal: number;
