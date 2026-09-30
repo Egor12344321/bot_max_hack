@@ -1,6 +1,6 @@
-# Рекомендации и план 5×5: как мы подбираем вузы
+# Спецификация: API, рекомендации и план 5×5
 
-Описание соответствует коду в `main`. Рекомендации отбирает `ProgramRecommendationPolicy` через `RecommendationService`, автоплан строит `ApplicationPlanGenerator` через `ApplicationPlanService`, баллы считает `AdmissionBenefitCalculator`.
+Описание соответствует коду в `main`. Список всех эндпоинтов — в [разделе 6](#6-эндпоинты), полный контракт со схемами запросов и ответов — в [openapi.yaml](openapi.yaml). Рекомендации отбирает `ProgramRecommendationPolicy` через `RecommendationService`, автоплан строит `ApplicationPlanGenerator` через `ApplicationPlanService`, баллы считает `AdmissionBenefitCalculator`.
 
 ## 1. Что учитываем
 
@@ -141,3 +141,72 @@
 **Версии.** Клиент передаёт `expectedVersion`. Если план уже изменили в другом окне, ответ 409 `version_conflict`, и ничего не записывается. Успешное сохранение увеличивает версию на 1.
 
 **Чтение.** `GET /v1/sessions/{id}/application-plan` возвращает сохранённый состав с актуальным пересчётом. Если после изменения ЕГЭ или льгот программа потеряла допуск или БВИ, приходит предупреждение, а состав сам не меняется.
+
+## 6. Эндпоинты
+
+Все пути относительно `https://runiversityadmission.ru/api`. Полные схемы запросов и ответов — в [openapi.yaml](openapi.yaml): его можно открыть в [Swagger Editor](https://editor.swagger.io) или в IDE. Файл сгенерирован springdoc из контроллеров, поэтому совпадает с кодом; на запущенном бэкенде тот же контракт отдаётся по `/v3/api-docs` (с JWT).
+
+**Авторизация.** Мини-приложение отправляет launch params MAX в `POST /v1/auth/exchange` и получает JWT. Остальные запросы, кроме вебхука, идут с заголовком `Authorization: Bearer <JWT>`. `sessionId` в пути должен совпадать с пользователем из JWT, иначе 404.
+
+**Ошибки.** Тело `{"code": "...", "message": "..."}`, `message` на русском и показывается пользователю.
+
+| HTTP | code | Когда |
+|---|---|---|
+| 400 | `validation_failed`, `bad_request` | Неверное тело или параметры, нарушено правило (например, в плане больше 5 вузов) |
+| 401 | `invalid_init_data`, `invalid_jwt` | Подпись MAX не прошла проверку, JWT нет или истёк |
+| 404 | `not_found` | Чужая или несуществующая заявка, неизвестный ID, нереализованный путь |
+| 409 | `onboarding_required` | Обмен токена до прохождения анкеты в боте |
+| 409 | `version_conflict` | План 5×5 изменили в другом окне |
+| 500 | `internal_error` | Непредвиденная ошибка |
+
+### Авторизация и бот
+
+| Метод | Путь | Что делает |
+|---|---|---|
+| POST | `/v1/auth/exchange` | Проверяет launch params MAX и выдаёт JWT. Без JWT |
+| POST | `/webhook/max` | Принимает обновления бота от MAX, проверяет секрет вебхука. Без JWT |
+
+### Справочники
+
+| Метод | Путь | Что делает |
+|---|---|---|
+| GET | `/v1/languages` | Языки интерфейса |
+| GET | `/v1/citizenship-groups` | Страны гражданства |
+| GET | `/v1/subjects` | Предметы ЕГЭ с минимальными порогами |
+| GET | `/v1/interest-categories` | Категории интересов |
+| GET | `/v1/directions` | Направления подготовки. Параметры `interestCategoryId`, `query`, `offset`, `limit` |
+| GET | `/v1/olympiads` | Олимпиады с профилями и уровнями. Параметры `query`, `subject` |
+| GET | `/v1/achievements` | Индивидуальные достижения. Одинаковый `exclusiveGroup` — взаимоисключающие |
+| GET | `/v1/privilege-categories` | Льготные категории (квоты) |
+
+### Заявка и анкета
+
+| Метод | Путь | Что делает |
+|---|---|---|
+| GET | `/v1/sessions/{sessionId}` | Заявка: язык, гражданство, ЕГЭ, прогресс онбординга |
+| POST | `/v1/sessions/{sessionId}/onboarding/complete` | Отмечает онбординг мини-приложения завершённым |
+| PATCH | `/v1/sessions/{sessionId}/language` | Меняет язык |
+| PATCH | `/v1/sessions/{sessionId}/citizenship` | Сохраняет гражданство и определяет трек поступления |
+| GET | `/v1/sessions/{sessionId}/ege-scores` | Баллы ЕГЭ |
+| PUT | `/v1/sessions/{sessionId}/ege-scores` | Заменяет баллы ЕГЭ целиком: 0–100, без повторов предметов |
+| PUT | `/v1/sessions/{sessionId}/interests` | Сохраняет категории интересов |
+| GET | `/v1/sessions/{sessionId}/directions` | Выбранные направления в порядке пользователя |
+| PUT | `/v1/sessions/{sessionId}/directions` | Заменяет выбор направлений, порядок сохраняется, `[]` очищает |
+| GET | `/v1/sessions/{sessionId}/olympiads` | Дипломы олимпиад |
+| PUT | `/v1/sessions/{sessionId}/olympiads` | Заменяет дипломы: `diplomas[{profileId, degree: winner \| prize}]` |
+| PUT | `/v1/sessions/{sessionId}/achievements` | Сохраняет индивидуальные достижения |
+| PUT | `/v1/sessions/{sessionId}/privilege` | Сохраняет льготы, возвращает лучший тип квоты или `bvi` |
+| GET | `/v1/sessions/{sessionId}/profile` | Профиль: данные пользователя и сводка по подборкам |
+
+### Льготы, рекомендации и план 5×5
+
+| Метод | Путь | Что делает |
+|---|---|---|
+| GET | `/v1/sessions/{sessionId}/admission-benefits` | Что олимпиады и ИД дают в каждом вузе (раздел 2). Параметр `universityId` |
+| GET | `/v1/sessions/{sessionId}/recommendations` | Рекомендации по направлению (раздел 3). Параметры `directionId`, `offset`, `limit` |
+| GET | `/v1/sessions/{sessionId}/recommendation-settings` | Допустимое отставание и тип конкурса |
+| PUT | `/v1/sessions/{sessionId}/recommendation-settings` | Меняет их: `{maxScoreDeficit: 0 \| 10 \| 15 \| 20, competitionType}` |
+| POST | `/v1/sessions/{sessionId}/application-plan/preview` | Черновик автоплана (раздел 4), ничего не сохраняет |
+| GET | `/v1/sessions/{sessionId}/application-plan/options` | Программы для ручного добавления в план. Параметры `universityId`, `offset`, `limit` |
+| GET | `/v1/sessions/{sessionId}/application-plan` | Сохранённый план с пересчётом (раздел 5) |
+| PUT | `/v1/sessions/{sessionId}/application-plan` | Сохраняет план целиком, проверяет `expectedVersion` |

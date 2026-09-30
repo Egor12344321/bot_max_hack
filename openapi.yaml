@@ -1,0 +1,2151 @@
+openapi: 3.1.0
+info:
+  title: Менеджер баллов — API мини-приложения MAX
+  version: 1.0.0
+  description: |-
+    Все реализованные эндпоинты бэкенда. Файл сгенерирован springdoc по контроллерам и дополнен описаниями.
+
+    Авторизация: POST /v1/auth/exchange меняет launch params MAX на JWT; остальные запросы — `Authorization: Bearer <JWT>`. sessionId в пути должен совпадать с пользователем из JWT, иначе 404.
+
+    Ошибки: `{code, message}`, message на русском. Коды: validation_failed, bad_request, not_found, invalid_init_data, invalid_jwt, onboarding_required, version_conflict, internal_error.
+
+    Логика расчёта, рекомендаций и плана 5×5 — в SPEC.md.
+servers:
+- url: https://runiversityadmission.ru/api
+  description: Прод (nginx проксирует /api/ на бэкенд)
+- url: http://localhost:8080
+  description: Локальный запуск
+paths:
+  /v1/auth/exchange:
+    post:
+      tags:
+      - Авторизация
+      summary: Обменять launch params MAX на JWT
+      description: Проверяет подпись initData мини-приложения и выдаёт JWT. sessionId = id пользователя в JWT.
+      operationId: exchange
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeResponse'
+        '401':
+          description: 'invalid_init_data: подпись initData не прошла проверку'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 'onboarding_required: пользователь ещё не прошёл анкету в боте'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/achievements:
+    get:
+      tags:
+      - Справочники
+      summary: Справочник индивидуальных достижений
+      description: Достижения с одинаковым exclusiveGroup взаимоисключающие (медаль I или II степени).
+      operationId: getAchievements
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AchievementResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/citizenship-groups:
+    get:
+      tags:
+      - Справочники
+      summary: Страны гражданства
+      description: Названия на языке пользователя.
+      operationId: getCitizenshipOptions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CitizenshipOptionResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/interest-categories:
+    get:
+      tags:
+      - Справочники
+      summary: Категории интересов
+      operationId: getInterestCategories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InterestCategoryResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/languages:
+    get:
+      tags:
+      - Справочники
+      summary: Языки интерфейса
+      operationId: getLanguages
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LanguageResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/olympiads:
+    get:
+      tags:
+      - Справочники
+      summary: Каталог олимпиад с профилями и уровнями
+      description: ВсОШ и перечень РСОШ 2025/26. Уровень задаётся профилю. query — поиск по названию, subject — предмет ЕГЭ.
+      operationId: getOlympiads
+      parameters:
+      - name: query
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: subject
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OlympiadResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/privilege-categories:
+    get:
+      tags:
+      - Справочники
+      summary: Льготные категории (квоты)
+      operationId: getPrivilegeCategories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PrivilegeCategoryResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/subjects:
+    get:
+      tags:
+      - Справочники
+      summary: Предметы ЕГЭ с минимальными порогами
+      operationId: getSubjects
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubjectResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}:
+    get:
+      tags:
+      - Заявка
+      summary: 'Заявка пользователя: язык, гражданство, ЕГЭ, прогресс'
+      operationId: getSession
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDraftResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/onboarding/complete:
+    post:
+      tags:
+      - Заявка
+      summary: Отметить онбординг в мини-приложении завершённым
+      operationId: completeOnboarding
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDraftResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/achievements:
+    put:
+      tags:
+      - Анкета
+      summary: Сохранить индивидуальные достижения
+      operationId: setAchievements
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetAchievementsRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/citizenship:
+    patch:
+      tags:
+      - Анкета
+      summary: Указать гражданство
+      description: Определяет трек поступления.
+      operationId: setCitizenship
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetCitizenshipRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitizenshipResultResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/ege-scores:
+    get:
+      tags:
+      - Анкета
+      summary: Баллы ЕГЭ пользователя
+      operationId: getEgeScores
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgeScoresSubmissionResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Анкета
+      summary: Заменить баллы ЕГЭ
+      description: Полная замена. Баллы 0–100, предметы не повторяются. Рекомендации пересчитываются при следующем запросе.
+      operationId: setEgeScores
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetEgeScoresRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgeScoresSubmissionResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/interests:
+    put:
+      tags:
+      - Анкета
+      summary: Сохранить категории интересов
+      operationId: setInterests
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetInterestsRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/language:
+    patch:
+      tags:
+      - Анкета
+      summary: Сменить язык
+      operationId: setLanguage
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLanguageRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/olympiads:
+    get:
+      tags:
+      - Анкета
+      summary: Дипломы олимпиад пользователя
+      operationId: getOlympiadDiplomas
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OlympiadDiplomaResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Анкета
+      summary: Заменить дипломы олимпиад
+      description: 'Тело: diplomas[{profileId, degree: winner|prize}]. [] — дипломов нет.'
+      operationId: setOlympiadDiplomas
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetOlympiadDiplomasRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OlympiadDiplomaResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/privilege:
+    put:
+      tags:
+      - Анкета
+      summary: Сохранить льготы
+      description: Возвращает лучший тип квоты; bvi — если дипломы дают БВИ хотя бы на одном направлении.
+      operationId: setPrivileges
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPrivilegesRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrivilegeApplyResultResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/directions:
+    get:
+      tags:
+      - Направления
+      summary: Каталог направлений подготовки
+      description: Фильтр по категории интересов и поиск по коду или названию; offset/limit.
+      operationId: search
+      parameters:
+      - name: interestCategoryId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: query
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudyDirectionPageResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/directions:
+    get:
+      tags:
+      - Направления
+      summary: Выбранные направления в порядке пользователя
+      operationId: getSelection
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudyDirectionSelection'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - Направления
+      summary: Заменить выбор направлений
+      description: Порядок сохраняется. [] очищает выбор.
+      operationId: replaceSelection
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudyDirectionSelection'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudyDirectionSelection'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/recommendations:
+    get:
+      tags:
+      - Рекомендации
+      summary: Рекомендации по выбранному направлению
+      description: Программы, куда есть БВИ или допуск с отставанием от прошлогоднего проходного не больше допустимого. Сначала
+        самые конкурентные (по относительному проходному), не больше 10. Невыбранное направление — 400. См. SPEC.md.
+      operationId: getRecommendations
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: directionId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramOptionPageResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/application-plan:
+    get:
+      tags:
+      - План 5×5
+      summary: Сохранённый план 5×5 с пересчётом
+      description: Для нового пользователя version=0 и пустой состав. Предупреждения о потерянном допуске или БВИ.
+      operationId: getPlan
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationPlanResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - План 5×5
+      summary: Сохранить план 5×5
+      description: Полная замена состава. До 5 вузов × 5 программ, одна программа на направление, допуск или БВИ обязательны.
+        expectedVersion не совпал — 409 version_conflict.
+      operationId: savePlan
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveApplicationPlanRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationPlanResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 'План изменился: expectedVersion устарел'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/application-plan/options:
+    get:
+      tags:
+      - План 5×5
+      summary: Программы для ручного добавления в план
+      description: Все программы выбранных направлений с допуском или БВИ, без лимита 10; фильтр universityId, пагинация.
+      operationId: options
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: universityId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramOptionPageResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/application-plan/preview:
+    post:
+      tags:
+      - План 5×5
+      summary: Черновик автоплана 5×5
+      description: 'mode: generate | fill (с basePlan), allowedDeficit: 0/10/15/20. Ничего не сохраняет, БВИ не назначает.
+        См. SPEC.md.'
+      operationId: preview
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewApplicationPlanRequest'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPreviewResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/recommendation-settings:
+    get:
+      tags:
+      - План 5×5
+      summary: Настройки рекомендаций
+      description: Допустимое отставание (0, 10, 15, 20) и тип конкурса.
+      operationId: settings
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - План 5×5
+      summary: Изменить настройки рекомендаций
+      description: Тип конкурса должен быть доступен по льготам пользователя.
+      operationId: settings_1
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Input'
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/admission-benefits:
+    get:
+      tags:
+      - Льготы по вузам
+      summary: Что олимпиады и ИД дают в каждом вузе
+      description: 'По каждому направлению: БВИ, 100 баллов или баллы за ИД, сумма ЕГЭ с льготами и детализация ИД.'
+      operationId: getAdmissionBenefits
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: universityId
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdmissionBenefitsResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/sessions/{sessionId}/profile:
+    get:
+      tags:
+      - Профиль
+      summary: 'Профиль: данные пользователя и сводка по подборкам'
+      description: Выше/около/ниже прошлогоднего проходного и БВИ по рекомендациям всех выбранных направлений.
+      operationId: getProfile
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Нет или истёк JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Чужая или несуществующая заявка, неизвестный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /webhook/max:
+    post:
+      tags:
+      - Бот MAX
+      summary: Вебхук обновлений бота MAX
+      description: Вызывается платформой MAX. Проверяется секрет вебхука; JWT не нужен.
+      operationId: handleUpdate
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Input:
+      type: object
+      properties:
+        maxScoreDeficit:
+          type: integer
+          format: int32
+        competitionType:
+          type: string
+    Settings:
+      type: object
+      properties:
+        maxScoreDeficit:
+          type: integer
+          format: int32
+        allowedValues:
+          type: array
+          items:
+            type: integer
+            format: int32
+        competitionType:
+          type: string
+        availableCompetitionTypes:
+          type: array
+          items:
+            type: string
+    SetPrivilegesRequest:
+      type: object
+      properties:
+        categoryIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - categoryIds
+    PrivilegeApplyResultResponse:
+      type: object
+      properties:
+        selectedCategoryIds:
+          type: array
+          items:
+            type: string
+        bestQuotaType:
+          type: string
+        message:
+          type: string
+    OlympiadDiplomaInput:
+      type: object
+      properties:
+        profileId:
+          type: string
+          minLength: 1
+        degree:
+          type: string
+          minLength: 1
+          pattern: winner|prize
+      required:
+      - degree
+      - profileId
+    SetOlympiadDiplomasRequest:
+      type: object
+      properties:
+        diplomas:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadDiplomaInput'
+      required:
+      - diplomas
+    OlympiadDiplomaResponse:
+      type: object
+      properties:
+        profileId:
+          type: string
+        olympiadId:
+          type: string
+        olympiadName:
+          type: string
+        profileName:
+          type: string
+        level:
+          type: integer
+          format: int32
+        degree:
+          type: string
+        year:
+          type: integer
+          format: int32
+    SetInterestsRequest:
+      type: object
+      properties:
+        categoryIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          maxItems: 3
+          minItems: 1
+      required:
+      - categoryIds
+    EgeScoreInput:
+      type: object
+      properties:
+        subjectId:
+          type: string
+          minLength: 1
+        score:
+          type: integer
+          format: int32
+          maximum: 100
+          minimum: 0
+      required:
+      - score
+      - subjectId
+    SetEgeScoresRequest:
+      type: object
+      properties:
+        scores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreInput'
+      required:
+      - scores
+    EgeScoreResponse:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        subjectName:
+          type: string
+        score:
+          type: integer
+          format: int32
+        minThreshold:
+          type: integer
+          format: int32
+        passed:
+          type: boolean
+    EgeScoresSubmissionResponse:
+      type: object
+      properties:
+        scores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResponse'
+        allPassed:
+          type: boolean
+    StudyDirectionSelection:
+      type: object
+      properties:
+        directionIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - directionIds
+    PlanUniversityDto:
+      type: object
+      properties:
+        universityId:
+          type: string
+          minLength: 1
+        programIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - programIds
+      - universityId
+    SaveApplicationPlanRequest:
+      type: object
+      properties:
+        universities:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanUniversityDto'
+        bviProgramId:
+          type: string
+        expectedVersion:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+      - expectedVersion
+      - universities
+    ApplicationPlanResponse:
+      type: object
+      properties:
+        composition:
+          $ref: '#/components/schemas/PlanCompositionDto'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramOptionResponse'
+        explanations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanExplanationResponse'
+        universityRanking:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanUniversityRankingResponse'
+        warnings:
+          type: array
+          items:
+            type: string
+        calculatedAt:
+          type: string
+          format: date-time
+        nearPreviousThreshold:
+          type: integer
+          format: int32
+        version:
+          type: integer
+          format: int32
+        savedAt:
+          type: string
+          format: date-time
+    PlanCompositionDto:
+      type: object
+      properties:
+        universities:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanUniversityDto'
+        bviProgramId:
+          type: string
+      required:
+      - universities
+    PlanExplanationResponse:
+      type: object
+      properties:
+        programId:
+          type: string
+        reason:
+          type: string
+        message:
+          type: string
+    PlanTopPlaceResponse:
+      type: object
+      properties:
+        directionId:
+          type: string
+        directionName:
+          type: string
+        place:
+          type: integer
+          format: int32
+    PlanUniversityRankingResponse:
+      type: object
+      properties:
+        universityId:
+          type: string
+        universityName:
+          type: string
+        hits:
+          type: integer
+          format: int32
+        sumOfPlaces:
+          type: integer
+          format: int32
+        firstPlaces:
+          type: integer
+          format: int32
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanTopPlaceResponse'
+        addedAsFill:
+          type: boolean
+        retained:
+          type: boolean
+        message:
+          type: string
+    ProgramBreakdownItemResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        name:
+          type: string
+        originalScore:
+          type: integer
+          format: int32
+        countedScore:
+          type: integer
+          format: int32
+        applied:
+          type: boolean
+        explanation:
+          type: string
+    ProgramOptionResponse:
+      type: object
+      properties:
+        programId:
+          type: string
+        programName:
+          type: string
+        universityId:
+          type: string
+        universityName:
+          type: string
+        direction:
+          $ref: '#/components/schemas/StudyDirectionResponse'
+        city:
+          type: string
+        campus:
+          type: string
+        campaignYear:
+          type: integer
+          format: int32
+        funding:
+          type: string
+        studyForm:
+          type: string
+        competitionType:
+          type: string
+        eligibility:
+          type: string
+        bviAvailable:
+          type: boolean
+        totalScore:
+          type: integer
+          format: int32
+        passingScorePreviousYear:
+          type: integer
+          format: int32
+        previousYear:
+          type: integer
+          format: int32
+        scoreDifference:
+          type: integer
+          format: int32
+        comparison:
+          type: string
+        dataSource:
+          type: string
+        breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramBreakdownItemResponse'
+        reasons:
+          type: array
+          items:
+            type: string
+        seats:
+          type: integer
+          format: int32
+        entranceScoreMax:
+          type: integer
+          format: int32
+        availableCompetitionTypes:
+          type: array
+          items:
+            type: string
+        riskStatus:
+          type: string
+    StudyDirectionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+    SetAchievementsRequest:
+      type: object
+      properties:
+        achievementIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+      - achievementIds
+    SessionDraftResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        language:
+          type: string
+        countryCode:
+          type: string
+        egeScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResponse'
+        isCompleteFromBot:
+          type: boolean
+        miniAppOnboardingComplete:
+          type: boolean
+        directionIds:
+          type: array
+          items:
+            type: string
+        interestCategoryIds:
+          type: array
+          items:
+            type: string
+    PreviewApplicationPlanRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          minLength: 1
+        basePlan:
+          $ref: '#/components/schemas/PlanCompositionDto'
+        allowedDeficit:
+          type: integer
+          format: int32
+      required:
+      - mode
+    PlanPreviewResponse:
+      type: object
+      properties:
+        composition:
+          $ref: '#/components/schemas/PlanCompositionDto'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramOptionResponse'
+        explanations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanExplanationResponse'
+        universityRanking:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanUniversityRankingResponse'
+        warnings:
+          type: array
+          items:
+            type: string
+        calculatedAt:
+          type: string
+          format: date-time
+        nearPreviousThreshold:
+          type: integer
+          format: int32
+    ExchangeRequest:
+      type: object
+      properties:
+        launchParams:
+          type: string
+          minLength: 1
+      required:
+      - launchParams
+    ExchangeResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+          format: int32
+        session:
+          $ref: '#/components/schemas/SessionResponse'
+    SessionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        platform:
+          type: string
+        language:
+          type: string
+        countryCode:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    SetLanguageRequest:
+      type: object
+      properties:
+        language:
+          type: string
+          minLength: 1
+      required:
+      - language
+    SetCitizenshipRequest:
+      type: object
+      properties:
+        countryCode:
+          type: string
+          minLength: 1
+      required:
+      - countryCode
+    CitizenshipResultResponse:
+      type: object
+      properties:
+        track:
+          type: string
+        message:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkResponse'
+    LinkResponse:
+      type: object
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+    SubjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        minThreshold:
+          type: integer
+          format: int32
+    ProgramOptionPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramOptionResponse'
+        total:
+          type: integer
+          format: int32
+    InterestCategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+    ProfileProgramsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int32
+        bvi:
+          type: integer
+          format: int32
+        abovePrevious:
+          type: integer
+          format: int32
+        nearPrevious:
+          type: integer
+          format: int32
+        belowPrevious:
+          type: integer
+          format: int32
+        insufficientData:
+          type: integer
+          format: int32
+        reserveCount:
+          type: integer
+          format: int32
+        realCount:
+          type: integer
+          format: int32
+        riskCount:
+          type: integer
+          format: int32
+    ProfileResponse:
+      type: object
+      properties:
+        language:
+          type: string
+        countryCode:
+          type: string
+        egeScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/EgeScoreResponse'
+        egeTotal:
+          type: integer
+          format: int32
+        interests:
+          type: array
+          items:
+            $ref: '#/components/schemas/InterestCategoryResponse'
+        directions:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudyDirectionResponse'
+        olympiads:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadDiplomaResponse'
+        achievements:
+          type: array
+          items:
+            type: string
+        privileges:
+          type: array
+          items:
+            type: string
+        programs:
+          $ref: '#/components/schemas/ProfileProgramsResponse'
+        advice:
+          type: string
+    AchievementScoreResponse:
+      type: object
+      properties:
+        achievementId:
+          type: string
+        achievementName:
+          type: string
+        points:
+          type: integer
+          format: int32
+        counted:
+          type: boolean
+        note:
+          type: string
+    AdmissionBenefitsResponse:
+      type: object
+      properties:
+        campaignYear:
+          type: integer
+          format: int32
+        universities:
+          type: array
+          items:
+            $ref: '#/components/schemas/UniversityBenefitsResponse'
+        bviNote:
+          type: string
+    OlympiadBenefitResponse:
+      type: object
+      properties:
+        profileId:
+          type: string
+        olympiadName:
+          type: string
+        profileName:
+          type: string
+        level:
+          type: integer
+          format: int32
+        degree:
+          type: string
+        benefit:
+          type: string
+        points:
+          type: integer
+          format: int32
+        note:
+          type: string
+    ProgramBenefitsResponse:
+      type: object
+      properties:
+        programId:
+          type: string
+        programName:
+          type: string
+        benefit:
+          type: string
+        egeScore:
+          type: integer
+          format: int32
+        egeScoreWithBenefits:
+          type: integer
+          format: int32
+        achievementPoints:
+          type: integer
+          format: int32
+        totalScore:
+          type: integer
+          format: int32
+        passingScorePreviousYear:
+          type: integer
+          format: int32
+        missingSubjects:
+          type: array
+          items:
+            type: string
+        olympiads:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadBenefitResponse'
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementScoreResponse'
+    UniversityBenefitsResponse:
+      type: object
+      properties:
+        universityId:
+          type: string
+        universityName:
+          type: string
+        achievementPointsMax:
+          type: integer
+          format: int32
+        programs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramBenefitsResponse'
+    PrivilegeCategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        quotaType:
+          type: string
+        maxQuotaPercent:
+          type: integer
+          format: int32
+        requiredDocuments:
+          type: array
+          items:
+            type: string
+    OlympiadProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        profile:
+          type: string
+        name:
+          type: string
+        subjectId:
+          type: string
+        level:
+          type: integer
+          format: int32
+        year:
+          type: integer
+          format: int32
+    OlympiadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        isVsosh:
+          type: boolean
+        listNumber:
+          type: integer
+          format: int32
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/OlympiadProfileResponse'
+    LanguageResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+    StudyDirectionPageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudyDirectionResponse'
+        total:
+          type: integer
+          format: int32
+    CitizenshipOptionResponse:
+      type: object
+      properties:
+        countryCode:
+          type: string
+        name:
+          type: string
+        group:
+          type: string
+    AchievementResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        exclusiveGroup:
+          type: string
+    ErrorResponse:
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+        message:
+          type: string
+          description: Сообщение для пользователя, по-русски
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+- bearerAuth: []
+tags:
+- name: Авторизация
+- name: Справочники
+- name: Заявка
+- name: Анкета
+- name: Направления
+- name: Рекомендации
+- name: План 5×5
+- name: Льготы по вузам
+- name: Профиль
+- name: Бот MAX
