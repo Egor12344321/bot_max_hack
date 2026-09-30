@@ -113,7 +113,7 @@ export function AchievementsPage() {
         <>
           <div className={styles.card}>
             <div className={styles.cardTitle}>
-              🏆 {t("onboarding.achievements.cardTitle")}
+              {t("onboarding.achievements.cardTitle")}
             </div>
 
             {achievements.map((achievement) => {
@@ -152,7 +152,7 @@ export function AchievementsPage() {
           </div>
 
           <div className={styles.info}>
-            <span>💡</span>
+
 
             <span>{t("onboarding.achievements.info")}</span>
           </div>

@@ -156,7 +156,7 @@ export function UniversitiesPage() {
 
         {!isLoading && universities.length === 0 && (
           <div className={styles.empty}>
-            <div className={styles.emptyIcon}>🏛️</div>
+
 
             <Typography.Title>{t("universities.emptyTitle")}</Typography.Title>
 

@@ -109,7 +109,7 @@ export function PrivilegesPage() {
         <>
           <div className={styles.card}>
             <div className={styles.cardTitle}>
-              🛡️ {t("onboarding.privileges.cardTitle")}
+              {t("onboarding.privileges.cardTitle")}
             </div>
 
             {privileges.map((privilege) => {
@@ -140,7 +140,7 @@ export function PrivilegesPage() {
           </div>
 
           <div className={styles.info}>
-            <span>{selectedIds.length > 0 ? "✅" : "ℹ️"}</span>
+
 
             <span>
               {selectedIds.length === 0

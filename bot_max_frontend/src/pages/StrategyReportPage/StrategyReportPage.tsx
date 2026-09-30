@@ -175,7 +175,7 @@ export function StrategyReportPage() {
           </Button>
         </div>
 
-        <div className={styles.botNote}>🤖 {t("strategyReport.botNote")}</div>
+        <div className={styles.botNote}>{t("strategyReport.botNote")}</div>
       </main>
     </div>
   );

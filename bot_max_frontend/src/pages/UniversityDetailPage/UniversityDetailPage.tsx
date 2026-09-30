@@ -180,7 +180,7 @@ export function UniversityDetailPage() {
         <section className={styles.achievementCard}>
           <div className={styles.achievementHeader}>
             <div className={styles.achievementTitle}>
-              🏆 {t("universityDetail.achievementTitle")}
+              {t("universityDetail.achievementTitle")}
             </div>
 
             <div className={styles.achievementTotal}>

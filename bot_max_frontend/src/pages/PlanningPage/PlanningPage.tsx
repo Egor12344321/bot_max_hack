@@ -17,6 +17,7 @@ import type {
 } from "@/api/types/planning";
 import { AppLayout } from "@/components/AppLayout/AppLayout";
 import { ApiError } from "@/components/Planning/ApiError";
+import { PlanProgramRow } from "@/components/Planning/PlanProgramRow";
 import { ProgramCard } from "@/components/Planning/ProgramCard";
 import { useRemote } from "@/hooks/useRemote";
 import { useAppSelector } from "@/store/hooks";
@@ -39,12 +40,14 @@ import ui from "@/components/Planning/Planning.module.css";
 
 function RecommendationGroup({
   direction,
+  priority,
   sessionId,
   draft,
   disabled,
   onAdd,
 }: {
   direction: StudyDirection;
+  priority: number;
   sessionId: string;
   draft: PlanDraft;
   disabled: boolean;
@@ -58,6 +61,7 @@ function RecommendationGroup({
   const { data, error, loading, retry } = useRemote(loader);
   return (
     <section className={ui.stack}>
+      <p className={ui.muted}>Приоритет направления: {priority}</p>
       <h2>
         {data?.items[0]?.direction.code ?? direction.code}{" "}
         {data?.items[0]?.direction.name ?? direction.name}
@@ -371,7 +375,7 @@ function PlanWorkspace({
         <>
           <p className={ui.muted}>
             Результаты учитывают данные профиля, олимпиады и ИД. Выберите
-            программы для итогового плана. Все баллы рассчитаны сервером.
+            программы для итогового плана.
           </p>
           {directionsReady && !directions.length && (
             <p className={ui.notice}>
@@ -379,10 +383,11 @@ function PlanWorkspace({
               <Link to="/onboarding/interests">Перейти к выбору</Link>
             </p>
           )}
-          {directions.map((direction) => (
+          {directions.map((direction, index) => (
             <RecommendationGroup
               key={direction.id}
               direction={direction}
+              priority={index + 1}
               sessionId={sessionId}
               draft={draft}
               disabled={busy}
@@ -399,12 +404,10 @@ function PlanWorkspace({
       ) : (
         <>
           <p className={ui.muted}>
-            До 5 вузов и до 5 различных направлений в каждом. Порядок сверху
-            вниз задаёт приоритет. Для замены удалите позицию и добавьте другую
-            из результатов.
+            До 5 вузов и до 5 различных направлений в каждом. Порядок строк задаёт приоритет. Нажмите на программу, чтобы изменить её позицию или посмотреть условия.
           </p>
-          <section className={ui.card}>
-            <h2>Автоплан</h2>
+          <details className={ui.card}>
+            <summary className={ui.autoSummary}>Автоплан · собрать или дополнить</summary>
             <p className={ui.muted}>
               Соберёт до 5 вузов и до 5 направлений в каждом по выбранным
               направлениям и вашим баллам. Сначала идут более конкурентные
@@ -449,7 +452,7 @@ function PlanWorkspace({
                 {warning}
               </p>
             ))}
-          </section>
+          </details>
           {!draft.composition.universities.length && (
             <p className={ui.notice}>
               План пуст. Соберите его автоматически или добавьте программы на
@@ -540,6 +543,10 @@ function PlanWorkspace({
                     Удалить вуз
                   </button>
                 </div>
+                <table className={ui.planTable}>
+                  <caption className={ui.srOnly}>Программы в порядке приоритета</caption>
+                  <thead><tr><th scope="col">№</th><th scope="col">Программа</th><th scope="col">Баллы<small>ваши / проходной</small></th></tr></thead>
+                  <tbody>
                 {u.programIds.map((id, rank) => {
                   const option = draft.options.find((p) => p.programId === id);
                   const explanation = autoPlan?.explanations.find(
@@ -617,17 +624,14 @@ function PlanWorkspace({
                       )}
                     </div>
                   );
-                  return option ? (
-                    <ProgramCard key={id} option={option}>
+                  return (
+                    <PlanProgramRow key={id} id={id} rank={rank} option={option} bvi={draft.composition.bviProgramId === id}>
                       {controls}
-                    </ProgramCard>
-                  ) : (
-                    <div key={id}>
-                      {id}
-                      {controls}
-                    </div>
+                    </PlanProgramRow>
                   );
                 })}
+                  </tbody>
+                </table>
               </section>
             ))}
             <div className={ui.actions}>
@@ -699,7 +703,7 @@ export function PlanningPage() {
           </section>
           {!showPlan && <>
             {selection.data && !directions.length && <p>Вы ещё не выбрали направления.</p>}
-            {directions.map((direction) => <RecommendationGroup key={direction.id} direction={direction} sessionId={sessionId} draft={unavailableDraft} disabled onAdd={() => {}} />)}
+            {directions.map((direction, index) => <RecommendationGroup key={direction.id} direction={direction} priority={index + 1} sessionId={sessionId} draft={unavailableDraft} disabled onAdd={() => {}} />)}
           </>}
           <Link to="/onboarding/interests">Вернуться к направлениям</Link>
         </div>

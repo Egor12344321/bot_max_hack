@@ -98,11 +98,11 @@ export const ky = {
     removeError: "ЖОЖду өчүрүү мүмкүн болгон жок",
 
     status: {
-      reserve: "🟢 Запас",
+      reserve: "Запас",
 
-      real: "🟡 Реалдуу",
+      real: "Реалдуу",
 
-      risk: "🔴 Тобокел",
+      risk: "Тобокел",
     },
   },
 

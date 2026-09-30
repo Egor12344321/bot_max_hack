@@ -12,7 +12,7 @@ import { EgeScoresPage } from "@/pages/EgeScoresPage/EgeScoresPage";
 import { PlanningPage } from "@/pages/PlanningPage/PlanningPage";
 import { OlympiadsPage } from "@/pages/OlympiadsPage/OlympiadsPage";
 
-import { CalendarPage } from "@/pages/CalendarPage/CalendarPage";
+
 
 
 export function AppRouter() {
@@ -44,7 +44,7 @@ export function AppRouter() {
 
         <Route path="/priorities" element={<Navigate to="/universities?view=plan" replace />} />
 
-        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/calendar" element={<Navigate to="/universities?view=plan" replace />} />
 
         <Route path="/strategy/report" element={<Navigate to="/universities?view=plan" replace />} />
 

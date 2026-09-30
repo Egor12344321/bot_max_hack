@@ -97,11 +97,11 @@ export const kk = {
     removeError: "ЖОО-ны жою мүмкін болмады",
 
     status: {
-      reserve: "🟢 Қор",
+      reserve: "Қор",
 
-      real: "🟡 Нақты",
+      real: "Нақты",
 
-      risk: "🔴 Тәуекел",
+      risk: "Тәуекел",
     },
   },
 

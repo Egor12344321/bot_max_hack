@@ -61,23 +61,18 @@
 
   border-radius: 2px;
 
-  background: #0066ff;
+  background: var(--app-accent);
 
   content: "";
 }
 
-.icon {
-  font-size: 21px;
-
-  line-height: 1;
-}
 
 .label {
   overflow: hidden;
 
   max-width: 100%;
 
-  font-size: 10px;
+  font-size: 13px;
 
   font-weight: 500;
 
@@ -90,3 +85,5 @@
 .itemActive .label {
   font-weight: 700;
 }
+
+.item:focus-visible { outline: 2px solid var(--app-accent); outline-offset: -4px; }

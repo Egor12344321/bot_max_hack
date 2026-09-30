@@ -98,11 +98,11 @@ export const ru = {
     removeError: "Не удалось удалить вуз",
 
     status: {
-      reserve: "🟢 Запас",
+      reserve: "Запас",
 
-      real: "🟡 Реально",
+      real: "Реально",
 
-      risk: "🔴 Риск",
+      risk: "Риск",
     },
   },
 

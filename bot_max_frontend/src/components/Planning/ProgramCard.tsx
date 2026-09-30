@@ -29,16 +29,18 @@ const competitions = {
 export function ProgramCard({
   option: p,
   children,
+  showUniversity = true,
 }: {
   option: ProgramOption;
   children?: ReactNode;
+  showUniversity?: boolean;
 }) {
   return (
     <article className={ui.card}>
       <details className={ui.programDisclosure}>
         <summary className={ui.programSummary}>
           <span className={ui.programHeading}>
-            <strong>{p.universityName}</strong>
+            {showUniversity && <strong>{p.universityName}</strong>}
             <span>{p.programName}</span>
             <span className={ui.muted}>{p.direction.code} · {p.direction.name}</span>
             <span className={ui.disclosureHint}>Условия и расчёт</span>

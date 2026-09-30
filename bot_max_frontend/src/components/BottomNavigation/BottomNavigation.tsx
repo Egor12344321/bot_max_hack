@@ -12,7 +12,7 @@ export function BottomNavigation() {
     new URLSearchParams(location.search).get("view") === "plan";
 
   return (
-    <nav className={styles.navigation}>
+    <nav className={styles.navigation} aria-label="Основная навигация">
       <div className={styles.navigationInner}>
         <NavLink
           to="/profile"
@@ -20,7 +20,6 @@ export function BottomNavigation() {
             isActive ? `${styles.item} ${styles.itemActive}` : styles.item
           }
         >
-          <span className={styles.icon}>👤</span>
 
           <span className={styles.label}>{t("profile.title")}</span>
         </NavLink>
@@ -33,7 +32,6 @@ export function BottomNavigation() {
               : styles.item
           }
         >
-          <span className={styles.icon}>🏛️</span>
 
           <span className={styles.label}>Результаты</span>
         </NavLink>
@@ -44,20 +42,8 @@ export function BottomNavigation() {
             planActive ? `${styles.item} ${styles.itemActive}` : styles.item
           }
         >
-          <span className={styles.icon}>📊</span>
 
           <span className={styles.label}>План 5×5</span>
-        </NavLink>
-
-        <NavLink
-          to="/calendar"
-          className={({ isActive }) =>
-            isActive ? `${styles.item} ${styles.itemActive}` : styles.item
-          }
-        >
-          <span className={styles.icon}>📅</span>
-
-          <span className={styles.label}>{t("calendar.title")}</span>
         </NavLink>
       </div>
     </nav>

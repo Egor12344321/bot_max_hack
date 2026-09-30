@@ -188,7 +188,7 @@ export function PrioritiesPage() {
         </header>
 
         <div className={styles.info}>
-          <span>💡</span>
+
 
           <span>{t("priorities.tip")}</span>
         </div>
@@ -197,7 +197,7 @@ export function PrioritiesPage() {
 
         {priorities.length === 0 && (
           <div className={styles.empty}>
-            <div className={styles.emptyIcon}>🏛️</div>
+
 
             <Typography.Title>{t("priorities.emptyTitle")}</Typography.Title>
 

@@ -10,7 +10,7 @@
 .card {
   padding: 16px;
   border: 1px solid var(--app-border);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--app-card);
   display: grid;
   gap: 12px;
@@ -168,4 +168,65 @@
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--app-border);
+}
+
+.planTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+.planTable th, .planTable td {
+  padding: 8px 4px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--app-border);
+}
+.planTable thead th {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.planTable thead th:first-child { width: 26px; }
+.planTable thead th:last-child { width: 88px; text-align: right; }
+.planTable small { display: block; font-size: 10px; font-weight: 400; }
+.planTable .rank { padding-top: 14px; color: var(--app-muted); }
+.programToggle {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-text);
+  text-align: left;
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.programToggle .muted { font-size: 12px; font-weight: 400; }
+.programToggle:focus-visible, .autoSummary:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+.planTable .planScore {
+  padding-top: 14px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.planScore span { display: block; color: var(--app-muted); font-size: 12px; margin-top: 4px; }
+.planTable .expandedCell { padding: 12px 0; }
+.autoSummary { cursor: pointer; padding: 4px 0; font-weight: 600; min-height: 28px; }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

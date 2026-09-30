@@ -35,7 +35,7 @@ function ProfileContent({ profile }: { profile: Profile }) {
     <Container className={styles.page}>
       <section className={styles.profileCard}>
         <div className={styles.profileTop}>
-          <div className={styles.avatar}>🎓</div>
+          <div className={styles.avatar} aria-hidden="true">{name.slice(0, 1).toLocaleUpperCase("ru-RU")}</div>
           <div>
             <div className={styles.name}>{name}</div>
             <div className={styles.subtitle}>{interests || "Интересы не выбраны"}</div>
@@ -46,7 +46,7 @@ function ProfileContent({ profile }: { profile: Profile }) {
             <div className={styles.scoreLabel}>Сумма баллов ЕГЭ</div>
             <div className={styles.scoreValue}>
               <span className={styles.score}>{profile.egeTotal}</span>
-              <span className={styles.scoreMax}>/{profile.egeScores.length * 100}</span>
+              {profile.egeScores.length > 0 && <span className={styles.scoreMax}>/{profile.egeScores.length * 100}</span>}
             </div>
           </div>
         </div>
@@ -79,26 +79,6 @@ function ProfileContent({ profile }: { profile: Profile }) {
         </div>
       </section>
 
-      <div className={styles.statusRow}>
-        <div className={`${styles.statusCard} ${styles.reserve}`}>
-          <div className={styles.statusEmoji}>🟢</div>
-          <div className={styles.statusNumber}>{programs.abovePrevious}</div>
-          <div className={styles.statusName}>Запас</div>
-          <div className={styles.statusDescription}>Выше прошлогоднего проходного</div>
-        </div>
-        <div className={`${styles.statusCard} ${styles.real}`}>
-          <div className={styles.statusEmoji}>🟡</div>
-          <div className={styles.statusNumber}>{programs.nearPrevious}</div>
-          <div className={styles.statusName}>Реально</div>
-          <div className={styles.statusDescription}>Около проходного</div>
-        </div>
-        <div className={`${styles.statusCard} ${styles.risk}`}>
-          <div className={styles.statusEmoji}>🔴</div>
-          <div className={styles.statusNumber}>{programs.belowPrevious}</div>
-          <div className={styles.statusName}>Риск</div>
-          <div className={styles.statusDescription}>Ниже проходного</div>
-        </div>
-      </div>
 
       {(programs.bvi > 0 || programs.insufficientData > 0) && (
         <div className={`${ui.notice} ${styles.section}`}>
@@ -108,7 +88,7 @@ function ProfileContent({ profile }: { profile: Profile }) {
       )}
 
       <section className={styles.advice}>
-        <span className={styles.adviceIcon}>💡</span>
+
         <div>
           <div className={styles.adviceTitle}>Совет</div>
           <div className={styles.adviceText}>{profile.advice}</div>

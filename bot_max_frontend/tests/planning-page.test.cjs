@@ -10,6 +10,30 @@ const { MemoryRouter } = require('react-router-dom');
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
+test('compact plan row reveals controls on demand and preserves zero and missing scores', async () => {
+  const { PlanProgramRow } = pageLoader()('src/components/Planning/PlanProgramRow.tsx');
+  let renderer;
+  await act(async () => {
+    renderer = create(React.createElement(PlanProgramRow, {
+      id: 'p', rank: 0, option: { ...option, totalScore: 0 }, bvi: true,
+    }, React.createElement('button', { 'data-control': true }, 'Управление')));
+  });
+  try {
+    const toggle = () => renderer.root.findAllByType('button').find((b) => b.props['aria-expanded'] !== undefined);
+    assert.equal(toggle().props['aria-expanded'], false);
+    assert.equal(renderer.root.findAllByProps({ 'data-control': true }).length, 0);
+    assert.match(JSON.stringify(renderer.toJSON()), /БВИ выбрано/);
+    const cells = renderer.root.findAllByType('td');
+    assert.equal(cells[1].children[0], '0');
+    assert.match(JSON.stringify(cells[1].children[1].props.children), /—/);
+    await act(async () => toggle().props.onClick());
+    assert.equal(toggle().props['aria-expanded'], true);
+    assert.equal(renderer.root.findAllByProps({ 'data-control': true }).length, 1);
+    await act(async () => toggle().props.onClick());
+    assert.equal(renderer.root.findAllByProps({ 'data-control': true }).length, 0);
+  } finally { await act(async () => renderer.unmount()); }
+});
+
 function pageLoader() {
   const cache = new Map();
   function load(file) {
