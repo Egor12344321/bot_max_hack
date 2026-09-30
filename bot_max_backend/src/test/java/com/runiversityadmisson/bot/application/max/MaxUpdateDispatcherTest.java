@@ -21,4 +21,16 @@ class MaxUpdateDispatcherTest {
 		verify(onboarding).handleCallback(42L, "cb-1", "lang_kk");
 		verifyNoMoreInteractions(onboarding);
 	}
+
+	@Test
+	void botStartedResetsQuestionnaire() {
+		Update update = JsonMapper.builder().build().readValue("""
+				{"update_type":"bot_started","timestamp":1720000000000,
+				 "user":{"user_id":42,"first_name":"Тест","is_bot":false}}
+				""", Update.class);
+		OnboardingConversation onboarding = mock(OnboardingConversation.class);
+		new MaxUpdateDispatcher(onboarding).process(update);
+		verify(onboarding).restartFromBotStart(42L);
+		verifyNoMoreInteractions(onboarding);
+	}
 }

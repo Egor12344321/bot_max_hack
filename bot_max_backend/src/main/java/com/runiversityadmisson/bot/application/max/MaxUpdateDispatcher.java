@@ -34,7 +34,7 @@ public class MaxUpdateDispatcher {
 			return;
 		}
 		log.info("Пользователь {} запустил бота", userId);
-		onboardingConversation.start(userId);
+		onboardingConversation.restartFromBotStart(userId);
 	}
 
 	private void handleMessage(Update update) {
